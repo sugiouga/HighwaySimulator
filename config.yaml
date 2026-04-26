@@ -1,0 +1,29 @@
+vehicle:
+  mass: 1650 # 車両質量[kg]
+  length: 4.5 # 車両長さ[m]
+  width: 1.8 # 車両幅[m]
+  min_velocity: 0.0 # 最小速度[m/s]
+  max_velocity: 20.0 # 最大速度[m/s]
+  min_acceleration: -3.0 # 最小加速度[m/s^2]
+  max_acceleration: 2.0 # 最大加速度[m/s^2]
+  max_steering_angle: 30.0 # 最大ステアリング角度[deg]
+  max_steering_rate: 10.0 # 最大ステアリングレート[deg/s]
+
+arrb_model:
+  delta: 0.666  # 燃料消費モデルのデルタ項
+  gamma1: 0.072  # 燃料消費モデルのガンマ項1
+  gamma2: 0.00344  # 燃料消費モデルのガンマ項2
+  d_1: 0.0269  # 燃料消費モデルのd_1項
+  d_2: 0.0171  # 燃料消費モデルのd_2項
+  d_3: 0.000672  # 燃料消費モデルのd_3項
+
+personal_area: # 運転特性に応じた追従車両を考慮するエリアのパラメータ
+    aggressive:
+      front_distance: 20.0  # 前方向の長さ [m]
+      side_distance: 1.0  # 横方向の幅 [m]
+    conservative:
+      front_distance: 30.0  # 前方向の長さ [m]
+      side_distance: 2.0  # 横方向の幅 [m]
+    normal:
+      front_distance: 40.0  # 前方向の長さ [m]
+      side_distance: 1.75  # 横方向の幅 [m]
