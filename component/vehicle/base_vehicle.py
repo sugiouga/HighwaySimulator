@@ -56,7 +56,7 @@ class BaseVehicle(ABC):
         Args
         - environment_info: 環境情報（例: 他の車両の状態、道路情報など）
         """
-        self.current_action = self.controller.compute_control(self.state, environment_info)
+        self.current_input = self.controller.compute_control(self.state, environment_info)
 
     def update_state(self, dt, integrator_fn = None):
         """車両の状態を更新するメソッド

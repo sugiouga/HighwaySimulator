@@ -9,6 +9,24 @@ vehicle:
   max_steering_angle: 30.0 # 最大ステアリング角度[deg]
   max_steering_rate: 10.0 # 最大ステアリングレート[deg/s]
 
+lanes:
+  - id: "main_1_1"
+    waypoints: [[-50, 0], [0, 0]]
+  - id: "main_1_2"
+    waypoints: [[0, 0], [100, 0]]
+    adj_right: "merge_1"
+  - id: "main_1_3"
+    waypoints: [[100, 0], [120, 0]]
+  - id: "merge_1"
+    waypoints: [[0, -3.5], [100, -3.5]]
+    adj_left: "main_1_2"
+
+idm:
+  desired_velocity: 15.0  # 望ましい速度 [m/s]
+  desired_time_headway: 1.5  # 望ましい時間頭部 [s]
+  min_spacing: 2.0  # 最小車間距離 [m]
+  comfortable_deceleration: 2.0  # 快適な減速度 [m/s^2]
+
 arrb_model:
   delta: 0.666  # 燃料消費モデルのデルタ項
   gamma1: 0.072  # 燃料消費モデルのガンマ項1
@@ -27,3 +45,4 @@ personal_area: # 運転特性に応じた追従車両を考慮するエリアの
     normal:
       front_distance: 40.0  # 前方向の長さ [m]
       side_distance: 1.75  # 横方向の幅 [m]
+
