@@ -35,7 +35,7 @@ arrb_model:
   d_2: 0.0171  # 燃料消費モデルのd_2項
   d_3: 0.000672  # 燃料消費モデルのd_3項
 
-personal_area: # 運転特性に応じた追従車両を考慮するエリアのパラメータ
+sensor_range: # 運転特性に応じた追従車両を考慮するエリアのパラメータ
     aggressive:
       front_distance: 20.0  # 前方向の長さ [m]
       side_distance: 1.0  # 横方向の幅 [m]
