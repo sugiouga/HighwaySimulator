@@ -11,6 +11,8 @@ class SimulationConfig:
 class RoadNetworkConfig:
     lane_width: float
     lanes: List[Dict[str, Any]]
+    init_spawns: List[Dict[str, Any]]
+    spawn_points: List[Dict[str, Any]]
 @dataclass(frozen=True)
 class ARRBModelParams:
     delta: float
@@ -55,10 +57,10 @@ class RLMPCParams:
 
 @dataclass(frozen=True)
 class ControllerConfig:
+    id: str
     type: str
     parameters: Union[IDMParams, MPCParams, RLParams, RLMPCParams]
     sensor_range: List[float, float]
-    spawn_probability: float
 
 @dataclass
 class MasterConfig:
@@ -108,7 +110,6 @@ class MasterConfig:
                 type=controller_info['type'],
                 parameters=parameters,
                 sensor_range=controller_info['sensor_range'],
-                spawn_probability=controller_info.get('spawn_probability', 0)  # デフォルトは0
             )
 
         config_dict['controllers'] = controller_configs

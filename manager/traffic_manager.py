@@ -1,12 +1,19 @@
 from component.perception.perception import Perception
+from vehichle_maneger import VehicleManager
+from road_network import RoadNetwork
 
 class TrafficManager:
-    def __init__(self, road_network, dt=0.1):
+    def __init__(self, road_network, config, dt=0.1):
         self.road_network = road_network
+        self.config = config
         self.dt = dt
         self.current_time = 0.0
         self.vehicles = []
         self.observers = []
+
+        self.road_network.reset()
+        self.vehicle_manager = VehicleManager(self.config)
+        self.vehicle_manager.initialize(self)
 
     def add_vehicle(self, vehicle):
         self.vehicles.append(vehicle)
@@ -16,6 +23,9 @@ class TrafficManager:
 
     def step(self):
         """シミュレーションの1ステップを進めるメソッド"""
+
+        # 車両のスポーンと削除を管理する
+        self.vehicle_manager.update(self)
 
         # 1. 認識層
         # 各車両の周囲の車両を観測する
@@ -37,13 +47,8 @@ class TrafficManager:
         # 4. 後処理
         self.current_time += self.dt
         self._notify_observers()
-        self._remove_out_of_bounds_vehicles()
 
     def _notify_observers(self):
         """観察者にシミュレーションの状態を通知するメソッド"""
         for observer in self.observers:
             observer.update(self.current_time, self.vehicles)
-
-    def _remove_out_of_bounds_vehicles(self):
-        """道路外に出た車両をシミュレーションから削除するメソッド"""
-        self.vehicles = [v for v in self.vehicles if all(self.road_network.is_within_bounds(corner) for corner in v.get_corners())]

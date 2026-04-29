@@ -4,19 +4,22 @@ import numpy as np
 # 車両の基底クラス
 class BaseVehicle(ABC):
     def __init__(self,
-                 vehicle_id: int,
+                 vehicle_id: str,
+                 lane_id: str,
                  init_state,
                  controller,
                  vehicle_config):
         """
         Args
-        - vehicle_id (int): 車両ID
+        - vehicle_id (str): 車両ID
+        - lane_id (str): 車両が現在いる車線のID
         - init_state (list): 初期状態 [s, d, yaw, velocity, steering_angle]
         - controller: 車両の制御器
         - vehicle_config: 車両の物理パラメータ
         """
 
         self.vehicle_id = vehicle_id
+        self.lane_id = lane_id
         self.state = np.array(init_state, dtype=np.float64)
         self.controller = controller
 
@@ -67,6 +70,13 @@ class BaseVehicle(ABC):
         if integrator_fn is None:
             integrator_fn = self.rk4_integrator
         self.state = integrator_fn(self.get_dynamics, self.state, self.current_action, dt)
+
+    def update_lane_id(self, lane):
+        """車両のlane_idを更新するメソッド
+        Args
+        - lane: 車両が現在いるLaneオブジェクト
+        """
+        self.lane_id = lane.lane_id
 
     def get_corners(self):
         """車両の四隅の座標を計算するメソッド

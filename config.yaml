@@ -19,9 +19,10 @@ vehicle:
     d_1: 0.0269  # 燃料消費モデルのd_1項
     d_2: 0.0171  # 燃料消費モデルのd_2項
     d_3: 0.000672  # 燃料消費モデルのd_3項
+  model: "kinematic_bicycle" # 車両モデルの種類
 
 controllers:
-  idm_aggressive:
+  - controller_id: "IDM_Aggressive"
     type: "IDM"
     parameters:
       desired_velocity: 15.0  # 望ましい速度 [m/s]
@@ -32,8 +33,7 @@ controllers:
       40.0,  # 前方向の長さ [m]
       1.5   # 横方向の幅 [m]
     ]
-    spawn_probability: 0  # このコントローラーが選択される確率
-  idm_conservative:
+  - controller_id: "IDM_Conservative"
     type: "IDM"
     parameters:
       desired_velocity: 15.0  # 望ましい速度 [m/s]
@@ -43,8 +43,7 @@ controllers:
     sensor_range:
       front_distance: 40.0  # 前方向の長さ [m]
       side_distance: 1.75  # 横方向の幅 [m]
-    spawn_probability: 0  # このコントローラーが選択される確率
-  idm_normal:
+  - controller_id: "IDM_Normal"
     type: "IDM"
     parameters:
       desired_velocity: 15.0  # 望ましい速度 [m/s]
@@ -55,19 +54,39 @@ controllers:
       40.0,  # 前方向の長さ [m]
       1.75   # 横方向の幅 [m]
     ]
-    spawn_probability: 1  # このコントローラーが選択される確率
 
 road_network:
   lane_width: 3.5 # 車線幅[m]
   lanes:
-  - id: "main_1_1"
+  - lane_id: "main_1_1"
     waypoints: [[-50, 0], [0, 0]]
-  - id: "main_1_2"
+  - lane_id: "main_1_2"
     waypoints: [[0, 0], [100, 0]]
     adj_right: "merge_1"
-  - id: "main_1_3"
+  - lane_id: "main_1_3"
     waypoints: [[100, 0], [120, 0]]
-  - id: "merge_1"
+  - lane_id: "merge_1"
     waypoints: [[0, -3.5], [100, -3.5]]
-    adj_left: "main_1_2
+    adj_left: "main_1_2"
+  init_spawns:
+  - lane_id: "main_1_2"
+    s_range: [0.0, 100.0] # スポーン位置の範囲[m]
+    d_start: 0.0 # スポーン開始横位置[m]
+    spacing_range: [30.0, 60.0] # スポーン間隔の範囲[m]
+    velocity_range: [10.0, 15.0] # 初期速度の範囲[m/s]
+    controllers_distribution:
+      IDM_Aggressive: 0.0
+      IDM_Conservative: 0.0
+      IDM_Normal: 1.0
+  spawn_points:
+  - id: "spawn_1"
+    lane_id: "main_1_1"
+    arrive_rate: 0.5 # 到着率[車両/s]
+    s_start: -40.0 # スポーン開始位置[m]
+    d_start: 0.0 # スポーン開始横位置[m]
+    velocity_range: [10.0, 15.0]
+    controllers_distribution:
+      IDM_Aggressive: 0.0
+      IDM_Conservative: 0.0
+      IDM_Normal: 1.0
 
