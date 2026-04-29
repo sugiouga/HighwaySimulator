@@ -32,16 +32,18 @@ class Lane:
         # 車線の接線ベクトルを計算
         dx_ds = self.x_spline.derivative()(s)
         dy_ds = self.y_spline.derivative()(s)
-        theta = np.arctan2(dy_ds, dx_ds)
-
+        tangent = np.array([dx_ds, dy_ds])
+        tangent_norm = np.linalg.norm(tangent)
+        if tangent_norm > 0:
+            tangent /= tangent_norm
+        else:
+            tangent = np.array([0, 0])
         # 車線の法線ベクトルを計算
-        normal_x = -np.sin(theta)
-        normal_y = np.cos(theta)
-        # 車線中心からの距離dを法線ベクトルに沿って加算
-        x = x_center + d * normal_x
-        y = y_center + d * normal_y
-
-        return np.array([x, y]), theta
+        normal = np.array([-tangent[1], tangent[0]])
+        # x, y座標を計算
+        x = x_center + d * normal[0]
+        y = y_center + d * normal[1]
+        return x, y
 
     def get_frenet(self, x, y):
         """x, y座標をs, d座標に変換する関数

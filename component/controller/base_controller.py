@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import Dict, Any, List
 
-class BaseBehaviorModel(ABC):
+class BaseController(ABC):
     """
-    意思決定モデルの基底クラス
-    各車両の行動を決定するための抽象クラスで、具体的な行動モデルはこのクラスを継承して実装される。
+    車両の制御器の基底クラス
+    車両の制御器は、周囲の環境情報をもとに車両の制御入力を計算する役割を担う。
     """
 
     @abstractmethod

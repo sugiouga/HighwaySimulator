@@ -1,4 +1,4 @@
-from .base_behavior_model import BaseBehaviorModel
+from .base_controller import BaseBehaviorModel
 from typing import Dict, Any, List
 import numpy as np
 
