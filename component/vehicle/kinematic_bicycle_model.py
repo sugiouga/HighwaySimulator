@@ -15,9 +15,9 @@ class KinematicBicycleModel(BaseVehicle):
         dsteering_angle/dt = steering_rate
     """
 
-    def get_dynamics(self, state, control_input):
+    def get_dynamics(self, state, action):
         s, d, yaw, velocity, steering_angle = state
-        acceleration, steering_rate = control_input
+        acceleration, steering_rate = action
 
         slip_angle = np.arctan((self.length / 2) * np.tan(steering_angle) / self.length)
 

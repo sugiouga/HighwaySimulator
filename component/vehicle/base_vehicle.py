@@ -7,21 +7,21 @@ class BaseVehicle(ABC):
                  vehicle_id: str,
                  lane_id: str,
                  init_state,
-                 controller,
+                 policy,
                  vehicle_config):
         """
         Args
         - vehicle_id (str): 車両ID
         - lane_id (str): 車両が現在いる車線のID
         - init_state (list): 初期状態 [s, d, yaw, velocity, steering_angle]
-        - controller: 車両の制御器
+        - policy: 車両のポリシー
         - vehicle_config: 車両の物理パラメータ
         """
 
         self.vehicle_id = vehicle_id
         self.lane_id = lane_id
         self.state = np.array(init_state, dtype=np.float64)
-        self.controller = controller
+        self.policy = policy
 
         # 車両の物理パラメータ
         self.mass = vehicle_config.mass
@@ -35,22 +35,40 @@ class BaseVehicle(ABC):
         self.max_steering_rate = vehicle_config.max_steering_rate
 
     @property
-    def s(self): return self.state
+    def s(self):
+        """車両のs座標を返すプロパティ"""
+        return self.state[0]
     @property
-    def d(self): return self.state
+    def d(self):
+        """車両のd座標を返すプロパティ"""
+        return self.state[1]
     @property
-    def yaw(self): return self.state
+    def yaw(self):
+        """車両のyaw角を返すプロパティ"""
+        return self.state[2]
     @property
-    def velocity(self): return self.state
+    def velocity(self):
+        """車両の速度を返すプロパティ"""
+        return self.state[3]
     @property
-    def steering_angle(self): return self.state
+    def steering_angle(self):
+        """車両のステアリング角を返すプロパティ"""
+        return self.state[4]
+    @property
+    def acceleration(self):
+        """車両の加速度を返すプロパティ"""
+        return self.current_action[0]
+    @property
+    def steering_rate(self):
+        """車両のステアリングレートを返すプロパティ"""
+        return self.current_action[1]
 
     @abstractmethod
-    def get_dynamics(self, state, control_input):
+    def get_dynamics(self, state, action):
         """車両の運動方程式を定義する抽象メソッド
         Args
         - state: 車両の状態 [s, d, yaw, velocity, steering_angle]
-        - control_input: 制御入力 [acceleration, steering_rate]
+        - action: 行動入力 [acceleration, steering_rate]
         """
         pass
 
@@ -59,7 +77,7 @@ class BaseVehicle(ABC):
         Args
         - environment_info: 環境情報（例: 他の車両の状態、道路情報など）
         """
-        self.current_input = self.controller.compute_control(self.state, environment_info)
+        self.current_action = self.policy.action(self.state, environment_info)
 
     def update_state(self, dt, integrator_fn = None):
         """車両の状態を更新するメソッド
@@ -109,34 +127,34 @@ class BaseVehicle(ABC):
 
         return corners_coordinates
 
-    def euler_integrator(dynamics_fn, state, control_input, dt):
+    def euler_integrator(dynamics_fn, state, action, dt):
         """単純なオイラー積分器
         Args
         - dynamics_fn: 車両の運動方程式を定義する関数
         - state: 現在の状態
-        - control_input: 制御入力
+        - action: 行動入力
         - dt: タイムステップ
         Returns
         - new_state: 更新された状態
         """
-        derivatives = dynamics_fn(state, control_input)
+        derivatives = dynamics_fn(state, action)
         new_state = state + derivatives * dt
         return new_state
 
-    def rk4_integrator(dynamics_fn, state, control_input, dt):
+    def rk4_integrator(dynamics_fn, state, action, dt):
         """4次のルンゲクッタ積分器
         Args
         - dynamics_fn: 車両の運動方程式を定義する関数
         - state: 現在の状態
-        - control_input: 制御入力
+        - action: 行動入力
         - dt: タイムステップ
         Returns
         - new_state: 更新された状態
         """
-        k1 = dynamics_fn(state, control_input)
-        k2 = dynamics_fn(state + 0.5 * dt * k1, control_input)
-        k3 = dynamics_fn(state + 0.5 * dt * k2, control_input)
-        k4 = dynamics_fn(state + dt * k3, control_input)
+        k1 = dynamics_fn(state, action)
+        k2 = dynamics_fn(state + 0.5 * dt * k1, action)
+        k3 = dynamics_fn(state + 0.5 * dt * k2, action)
+        k4 = dynamics_fn(state + dt * k3, action)
 
         new_state = state + (dt / 6) * (k1 + 2*k2 + 2*k3 + k4)
         return new_state

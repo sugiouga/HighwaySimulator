@@ -12,17 +12,10 @@ vehicle:
   max_acceleration: 2.0 # 最大加速度[m/s^2]
   max_steering_angle: 30.0 # 最大ステアリング角度[deg]
   max_steering_rate: 10.0 # 最大ステアリングレート[deg/s]
-  arrb_model:
-    delta: 0.666  # 燃料消費モデルのデルタ項
-    gamma1: 0.072  # 燃料消費モデルのガンマ項1
-    gamma2: 0.00344  # 燃料消費モデルのガンマ項2
-    d_1: 0.0269  # 燃料消費モデルのd_1項
-    d_2: 0.0171  # 燃料消費モデルのd_2項
-    d_3: 0.000672  # 燃料消費モデルのd_3項
   model: "kinematic_bicycle" # 車両モデルの種類
 
-controllers:
-  - controller_id: "IDM_Aggressive"
+policies:
+  - policy_id: "IDM_Aggressive"
     type: "IDM"
     parameters:
       desired_velocity: 15.0  # 望ましい速度 [m/s]
@@ -33,7 +26,7 @@ controllers:
       40.0,  # 前方向の長さ [m]
       1.5   # 横方向の幅 [m]
     ]
-  - controller_id: "IDM_Conservative"
+  - policy_id: "IDM_Conservative"
     type: "IDM"
     parameters:
       desired_velocity: 15.0  # 望ましい速度 [m/s]
@@ -43,7 +36,7 @@ controllers:
     sensor_range:
       front_distance: 40.0  # 前方向の長さ [m]
       side_distance: 1.75  # 横方向の幅 [m]
-  - controller_id: "IDM_Normal"
+  - policy_id: "IDM_Normal"
     type: "IDM"
     parameters:
       desired_velocity: 15.0  # 望ましい速度 [m/s]
@@ -74,7 +67,7 @@ road_network:
     d_start: 0.0 # スポーン開始横位置[m]
     spacing_range: [30.0, 60.0] # スポーン間隔の範囲[m]
     velocity_range: [10.0, 15.0] # 初期速度の範囲[m/s]
-    controllers_distribution:
+    policies_distribution:
       IDM_Aggressive: 0.0
       IDM_Conservative: 0.0
       IDM_Normal: 1.0
@@ -85,8 +78,15 @@ road_network:
     s_start: -40.0 # スポーン開始位置[m]
     d_start: 0.0 # スポーン開始横位置[m]
     velocity_range: [10.0, 15.0]
-    controllers_distribution:
+    policies_distribution:
       IDM_Aggressive: 0.0
       IDM_Conservative: 0.0
       IDM_Normal: 1.0
 
+arrb_model:
+  delta: 0.666  # 燃料消費モデルのデルタ項
+  gamma1: 0.072  # 燃料消費モデルのガンマ項1
+  gamma2: 0.00344  # 燃料消費モデルのガンマ項2
+  d_1: 0.0269  # 燃料消費モデルのd_1項
+  d_2: 0.0171  # 燃料消費モデルのd_2項
+  d_3: 0.000672  # 燃料消費モデルのd_3項
