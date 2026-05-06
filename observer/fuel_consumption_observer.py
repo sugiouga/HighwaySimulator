@@ -7,12 +7,12 @@ class FuelConsumptionObserver(BaseObserver):
     各車両の燃料消費量を計算し、リスク評価を行う。
     """
 
-    def observe(self, vehicles, current_time):
+    def observe(self, vehicles, road_network, current_time):
         for vehicle in vehicles:
             fuel_consumption = self.calculate_fuel_consumption(vehicle)
             log_entry = {
                 'time': current_time,
-                'vehicle_id': vehicle.id,
+                'vehicle_id': vehicle.vehicle_id,
                 'fuel_consumption': fuel_consumption
             }
             self.logs.append(log_entry)

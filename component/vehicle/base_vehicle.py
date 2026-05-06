@@ -8,14 +8,17 @@ class BaseVehicle(ABC):
                  lane_id: str,
                  init_state,
                  policy,
-                 vehicle_config):
+                 vehicle_config,
+                 policy_config
+                 ):
         """
         Args
         - vehicle_id (str): 車両ID
         - lane_id (str): 車両が現在いる車線のID
-        - init_state (list): 初期状態 [s, d, yaw, velocity, steering_angle]
+        - init_state (list): 初期状態 [x, y, yaw, velocity, steering_angle]
         - policy: 車両のポリシー
         - vehicle_config: 車両の物理パラメータ
+        - policy_config: 車両のポリシーに関する設定情報
         """
 
         self.vehicle_id = vehicle_id
@@ -27,6 +30,7 @@ class BaseVehicle(ABC):
         self.mass = vehicle_config.mass
         self.length = vehicle_config.length
         self.width = vehicle_config.width
+        self.color = policy_config.color
         self.min_velocity = vehicle_config.min_velocity
         self.max_velocity = vehicle_config.max_velocity
         self.min_acceleration = vehicle_config.min_acceleration
@@ -35,12 +39,12 @@ class BaseVehicle(ABC):
         self.max_steering_rate = vehicle_config.max_steering_rate
 
     @property
-    def s(self):
-        """車両のs座標を返すプロパティ"""
+    def x(self):
+        """車両のx座標を返すプロパティ"""
         return self.state[0]
     @property
-    def d(self):
-        """車両のd座標を返すプロパティ"""
+    def y(self):
+        """車両のy座標を返すプロパティ"""
         return self.state[1]
     @property
     def yaw(self):
@@ -67,7 +71,7 @@ class BaseVehicle(ABC):
     def get_dynamics(self, state, action):
         """車両の運動方程式を定義する抽象メソッド
         Args
-        - state: 車両の状態 [s, d, yaw, velocity, steering_angle]
+        - state: 車両の状態 [x, y, yaw, velocity, steering_angle]
         - action: 行動入力 [acceleration, steering_rate]
         """
         pass
@@ -101,13 +105,9 @@ class BaseVehicle(ABC):
         Returns
         - corners: 車両の四隅の座標 [[x1, y1], [x2, y2], [x3, y3], [x4, y4]]
         """
-        s, d, yaw, _, _ = self.state
+        x, y, yaw, _, _ = self.state
         cos_yaw = np.cos(yaw)
         sin_yaw = np.sin(yaw)
-
-        # 車両の中心位置を計算
-        center_x = s * cos_yaw - d * sin_yaw
-        center_y = s * sin_yaw + d * cos_yaw
 
         # 車両の四隅のオフセットを計算
         half_length = self.length / 2
@@ -123,10 +123,11 @@ class BaseVehicle(ABC):
         # 四隅の座標を計算
         rotation_matrix = np.array([[cos_yaw, -sin_yaw], [sin_yaw, cos_yaw]])
         rotated_corners = corners @ rotation_matrix.T
-        corners_coordinates = rotated_corners + np.array([center_x, center_y])
+        corners_coordinates = rotated_corners + np.array([x, y])
 
         return corners_coordinates
 
+    @staticmethod
     def euler_integrator(dynamics_fn, state, action, dt):
         """単純なオイラー積分器
         Args
@@ -141,6 +142,7 @@ class BaseVehicle(ABC):
         new_state = state + derivatives * dt
         return new_state
 
+    @staticmethod
     def rk4_integrator(dynamics_fn, state, action, dt):
         """4次のルンゲクッタ積分器
         Args

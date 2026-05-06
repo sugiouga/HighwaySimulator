@@ -1,16 +1,16 @@
-from base_observer import BaseObserver
+from .base_observer import BaseObserver
 
 class JerkObserver(BaseObserver):
     """
     各車両の加速度の変化率（ジャーク）を計算し、リスク評価を行う。
     """
 
-    def observe(self, vehicles, current_time):
+    def observe(self, vehicles, road_network, current_time):
         for vehicle in vehicles:
             jerk = self.calculate_jerk(vehicle)
             log_entry = {
                 'time': current_time,
-                'vehicle_id': vehicle.id,
+                'vehicle_id': vehicle.vehicle_id,
                 'jerk': jerk
             }
             self.logs.append(log_entry)

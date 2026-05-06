@@ -3,14 +3,14 @@ from .base_observer import BaseObserver
 
 class MetricsObserver(BaseObserver):
 
-    def observe(self, vehicles, current_time):
+    def observe(self, vehicles, road_network, current_time):
         for vehicle in vehicles:
             log_entry = {
                 'time': current_time,
-                'vehicle_id': vehicle.id,
+                'vehicle_id': vehicle.vehicle_id,
                 'lane_id': vehicle.lane_id,
-                's': vehicle.s,
-                'd': vehicle.d,
+                'x': vehicle.x,
+                'y': vehicle.y,
                 'yaw': vehicle.yaw,
                 'velocity': vehicle.velocity,
                 'steering_angle': vehicle.steering_angle,

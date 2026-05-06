@@ -1,6 +1,6 @@
 from component.perception.perception import Perception
-from vehichle_maneger import VehicleManager
-from road_network import RoadNetwork
+from manager.vehicle_manager import VehicleManager
+from manager.road_network import RoadNetwork
 
 class TrafficManager:
     def __init__(self, road_network, config, dt=0.1):
@@ -32,12 +32,12 @@ class TrafficManager:
         observations = {}
         for vehicle in self.vehicles:
             perception = Perception(sensor_range=vehicle.policy.sensor_range)
-            observations[vehicle.id] = perception.observe(vehicle, self.road_network, self.vehicles)
+            observations[vehicle.vehicle_id] = perception.observe(vehicle, self.vehicles, self.road_network)
 
         # 2. 計画層
         # 各車両の制御入力を計算する
         for vehicle in self.vehicles:
-            vehicle.plan(observations[vehicle.id])
+            vehicle.plan(observations[vehicle.vehicle_id])
 
         # 3. 制御層
         # 各車両の状態を更新する
@@ -51,4 +51,4 @@ class TrafficManager:
     def _notify_observers(self):
         """観察者にシミュレーションの状態を通知するメソッド"""
         for observer in self.observers:
-            observer.observe(self.vehicles, self.current_time)
+            observer.observe(self.vehicles, self.road_network, self.current_time)

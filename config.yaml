@@ -2,6 +2,15 @@ simulation:
   time_step: 0.1 # シミュレーションの時間ステップ[s]
   total_time: 60.0 # シミュレーションの総時間[s]
 
+visualization:
+  enable: true # 可視化の有効化
+  screen_width: 1200 # 画面の幅[px]
+  screen_height: 300 # 画面の高さ[px]
+  screen_color: "paleturquoise" # 画面の背景色
+  caption: "Highway Simulator" # ウィンドウのタイトル
+  ppm: 10 # ピクセルあたりのメートル数
+  origin_x: 0.0 # 描画開始位置(ピクセル)
+
 vehicle:
   mass: 1650 # 車両質量[kg]
   length: 4.5 # 車両長さ[m]
@@ -26,6 +35,7 @@ policies:
       40.0,  # 前方向の長さ [m]
       1.5   # 横方向の幅 [m]
     ]
+    color: "blue" # 車両の色
   - policy_id: "IDM_Conservative"
     type: "IDM"
     parameters:
@@ -36,6 +46,7 @@ policies:
     sensor_range:
       front_distance: 40.0  # 前方向の長さ [m]
       side_distance: 1.75  # 横方向の幅 [m]
+    color: "blue" # 車両の色
   - policy_id: "IDM_Normal"
     type: "IDM"
     parameters:
@@ -47,6 +58,7 @@ policies:
       40.0,  # 前方向の長さ [m]
       1.75   # 横方向の幅 [m]
     ]
+    color: "blue" # 車両の色
 
 road_network:
   lane_width: 3.5 # 車線幅[m]
