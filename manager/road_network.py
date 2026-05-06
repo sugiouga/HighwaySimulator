@@ -2,7 +2,9 @@ from factory.lane_factory import LaneFactory
 
 class RoadNetwork:
     def __init__(self, config):
+        self.config = config
         self.lanes = {}
+        self.setup_lanes(self.config)
 
     def add_lane(self, lane):
         self.lanes[lane.lane_id] = lane
@@ -29,10 +31,7 @@ class RoadNetwork:
                 return True
         return False
 
-    def reset(self):
-        """道路ネットワークをリセットするメソッド"""
-        self.lanes.clear()
-        # コンフィグから道路ネットワークを再構築する
+    def _setup_lanes(self):
         lane_factory = LaneFactory()
         for lane_config in self.config.road_network.lanes:
             lane = lane_factory.create_lane(lane_config)

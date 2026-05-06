@@ -1,8 +1,8 @@
-from .base_controller import BaseBehaviorModel
+from .base_policy import BasePolicy
 from typing import Dict, Any, List
 import numpy as np
 
-class IDMController(BaseBehaviorModel):
+class IDMPolicy(BasePolicy):
     """
     Intelligent Driver Model (IDM) に基づく意思決定モデル
     IDMは、車両の加減速を決定するためのモデルで、前方車両との距離や速度差に基づいて制御入力を計算する。
@@ -21,13 +21,13 @@ class IDMController(BaseBehaviorModel):
         self.max_acceleration = vehicle_config.max_acceleration
         self.comfortable_deceleration = idm_config.comfortable_deceleration
 
-    def compute_control(self, state: list, environment_info: Dict[str, Any]) -> List[float]:
+    def action(self, state: list, environment_info: Dict[str, Any]) -> List[float]:
         """IDMに基づいて制御入力を計算するメソッド
         Args:
         - state: 車両の状態 [s, d, yaw, velocity, steering_angle]
         - environment_info: 周囲の環境情報を表す辞書（例: 他の車両の状態、道路情報など）
         Returns:
-        - control_input: 車両の制御入力を表すリスト（例: [acceleration, steering_rate]）
+        - action: 行動入力を表すリスト（例: [acceleration, steering_rate]）
         """
         # 前方車両の情報を取得
         lead_vehicle = environment_info.get('lead_vehicle', None)

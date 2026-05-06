@@ -31,7 +31,7 @@ class TrafficManager:
         # 各車両の周囲の車両を観測する
         observations = {}
         for vehicle in self.vehicles:
-            perception = Perception(sensor_range=vehicle.controller.sensor_range)
+            perception = Perception(sensor_range=vehicle.policy.sensor_range)
             observations[vehicle.id] = perception.observe(vehicle, self.road_network, self.vehicles)
 
         # 2. 計画層
@@ -51,4 +51,4 @@ class TrafficManager:
     def _notify_observers(self):
         """観察者にシミュレーションの状態を通知するメソッド"""
         for observer in self.observers:
-            observer.update(self.current_time, self.vehicles)
+            observer.observe(self.vehicles, self.current_time)
