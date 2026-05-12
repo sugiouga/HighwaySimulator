@@ -7,26 +7,6 @@ class VehicleManager:
         self.config = config
         self.factory = VehicleFactory(config)
 
-    def initialize(self, traffic_manager):
-        """シミュレーション開始時に初期車両をスポーンするメソッド"""
-        for init_spawn in self.config.road_network.init_spawns:
-            # support both dict and dataclass/object access
-            lane_id = init_spawn.get('lane_id') if isinstance(init_spawn, dict) else getattr(init_spawn, 'lane_id')
-            s_range = init_spawn.get('s_range') if isinstance(init_spawn, dict) else getattr(init_spawn, 's_range')
-            d_start = init_spawn.get('d_start') if isinstance(init_spawn, dict) else getattr(init_spawn, 'd_start')
-            velocity_range = init_spawn.get('velocity_range') if isinstance(init_spawn, dict) else getattr(init_spawn, 'velocity_range')
-            policies_distribution = init_spawn.get('policies_distribution') if isinstance(init_spawn, dict) else getattr(init_spawn, 'policies_distribution')
-
-            lane = traffic_manager.road_network.get_lane(lane_id)
-            s = np.random.uniform(*s_range)
-            d = d_start
-            velocity = np.random.uniform(*velocity_range)
-            policy_type = np.random.choice(list(policies_distribution.keys()), p=list(policies_distribution.values()))
-            # s, d座標からx, y座標に変換
-            x, y = lane.get_cartesian(s, d)
-            vehicle = self.factory.create_vehicle(vehicle_id=f"{len(traffic_manager.vehicles) + 1}_{policy_type}", lane_id=lane_id, init_state=[x, y, 0.0, velocity, 0.0], policy_id=policy_type)
-            traffic_manager.add_vehicle(vehicle)
-
     def update(self, traffic_manager):
         """車両のスポーンと削除を管理するメソッド"""
         dt = traffic_manager.dt
@@ -58,7 +38,7 @@ class VehicleManager:
                 policy_type = np.random.choice(list(policies_distribution.keys()), p=list(policies_distribution.values()))
                 # s, d座標からx, y座標に変換
                 x, y = lane.get_cartesian(s, d)
-                vehicle = self.factory.create_vehicle(vehicle_id=f"{len(traffic_manager.vehicles) + 1}_{policy_type}", lane_id=lane_id, init_state=[x, y, 0.0, velocity, 0.0], policy_id=policy_type)
+                vehicle = self.factory.create_vehicle(vehicle_id=f"{len(traffic_manager.vehicles) + 1}_{policy_type}", lane_id=lane_id, init_state=[x, y, 0.0, velocity, 0.0], policy_id=policy_type, is_ego=False)
                 traffic_manager.add_vehicle(vehicle)
 
     def _remove_out_of_bounds_vehicles(self, traffic_manager):

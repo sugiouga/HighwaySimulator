@@ -1,3 +1,4 @@
+import pandas as pd
 from .base_observer import BaseObserver
 
 class JerkObserver(BaseObserver):
@@ -30,3 +31,25 @@ class JerkObserver(BaseObserver):
         vehicle.previous_acceleration = current_acceleration
 
         return jerk
+
+    def save_logs(self, file_path):
+        df = pd.DataFrame(self.logs)
+        df.to_csv(file_path, index=False)
+
+    def get_current_jerk(self, vehicle_id):
+        """車両の現在のジャークを取得するメソッド"""
+        for log in reversed(self.logs):
+            if log['vehicle_id'] == vehicle_id:
+                return log['jerk']
+        return None  # ジャークが見つからない場合はNoneを返す
+
+    def get_previous_jerk(self, vehicle_id):
+        """車両の前回のジャークを取得するメソッド"""
+        found_current = False
+        for log in reversed(self.logs):
+            if log['vehicle_id'] == vehicle_id:
+                if found_current:
+                    return log['jerk']  # 前回のジャークを返す
+                else:
+                    found_current = True  # 現在のジャークを見つけたことを記録
+        return None  # 前回のジャークが見つからない場合はNoneを返す

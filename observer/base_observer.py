@@ -15,6 +15,7 @@ class BaseObserver(ABC):
         """
         self.config = config
         self.logs = []
+        self.info = {}
 
     @abstractmethod
     def observe(self, vehicles, road_network, current_time):

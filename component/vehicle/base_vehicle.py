@@ -9,7 +9,8 @@ class BaseVehicle(ABC):
                  init_state,
                  policy,
                  vehicle_config,
-                 policy_config
+                 policy_config,
+                 is_ego=False
                  ):
         """
         Args
@@ -25,6 +26,7 @@ class BaseVehicle(ABC):
         self.lane_id = lane_id
         self.state = np.array(init_state, dtype=np.float64)
         self.policy = policy
+        self.is_ego = is_ego
 
         # 車両の物理パラメータ
         self.mass = vehicle_config.mass
@@ -81,6 +83,9 @@ class BaseVehicle(ABC):
         Args
         - environment_info: 環境情報（例: 他の車両の状態、道路情報など）
         """
+        if self.is_ego:
+            # ego車両は外部から行動が与えられるため、ポリシーに基づいて行動を計算しない
+            return
         self.current_action = self.policy.action(self.state, environment_info)
 
     def update_state(self, dt, integrator_fn = None):
@@ -99,6 +104,13 @@ class BaseVehicle(ABC):
         - lane: 車両が現在いるLaneオブジェクト
         """
         self.lane_id = lane.lane_id
+
+    def set_action(self, action):
+        """車両の行動入力を設定するメソッド
+        Args
+        - action: 行動入力 [acceleration, steering_rate]
+        """
+        self.current_action = action
 
     def get_corners(self):
         """車両の四隅の座標を計算するメソッド

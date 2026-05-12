@@ -9,7 +9,7 @@ class VehicleFactory:
     def __init__(self, config):
         self.config = config
 
-    def create_vehicle(self, vehicle_id, lane_id, init_state, policy_id):
+    def create_vehicle(self, vehicle_id, lane_id, init_state, policy_id, is_ego=False):
         """
         車両を生成するメソッド
         Args:
@@ -25,6 +25,6 @@ class VehicleFactory:
         policy_config = self.config.policies[policy_id]
 
         if self.config.vehicle.model == "kinematic_bicycle":
-            return KinematicBicycleModel(vehicle_id, lane_id, init_state, policy, vehicle_config, policy_config)
+            return KinematicBicycleModel(vehicle_id, lane_id, init_state, policy, vehicle_config, policy_config, is_ego)
         else:
             raise ValueError(f"Unknown vehicle model: {self.config.vehicle.model}")

@@ -1,4 +1,4 @@
-from config_loader import MasterConfig
+from utils.config_loader import MasterConfig
 from manager.traffic_manager import TrafficManager
 from manager.road_network import RoadNetwork
 from observer.visualizer import Visualizer

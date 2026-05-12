@@ -1,6 +1,8 @@
 simulation:
   time_step: 0.1 # シミュレーションの時間ステップ[s]
-  total_time: 60.0 # シミュレーションの総時間[s]
+  warmup_time: 10.0 # ウォームアップ時間[s]
+  total_time: 30.0 # シミュレーションの総時間[s]
+  goal_x: 115.0 # 目標位置のx座標[m]
 
 visualization:
   enable: true # 可視化の有効化
@@ -59,35 +61,53 @@ policies:
       1.75   # 横方向の幅 [m]
     ]
     color: "blue" # 車両の色
+  - policy_id: "MPC_Agent"
+    type: "MPC"
+    parameters:
+      mpc_horizon: 10  # MPCの予測ホライズン [ステップ数]
+      mpc_time_step: 0.1  # MPCの時間ステップ [s]
+    sensor_range: [
+      40.0,  # 前方向の長さ [m]
+      1.75   # 横方向の幅 [m]
+    ]
+    color: "red" # 車両の色
+  - policy_id: "DRL_Agent"
+    type: "RL"
+    parameters: {}
+    sensor_range: [
+      40.0,  # 前方向の長さ [m]
+      1.75   # 横方向の幅 [m]
+    ]
+    color: "red" # 車両の色
+  - policy_id: "DRL_MPC_Agent"
+    type: "RLMPC"
+    parameters:
+      mpc_horizon: 10  # MPCの予測ホライズン [ステップ数]
+      mpc_time_step: 0.1  # MPCの時間ステップ [s]
+    sensor_range: [
+      40.0,  # 前方向の長さ [m]
+      1.75   # 横方向の幅 [m]
+    ]
+    color: "red" # 車両の色
 
 road_network:
   lane_width: 3.5 # 車線幅[m]
   lanes:
   - lane_id: "main_1_1"
-    waypoints: [[-50, 0], [0, 0]]
+    waypoints: [[-30, 0], [0, 0]]
   - lane_id: "main_1_2"
     waypoints: [[0, 0], [100, 0]]
     adj_right: "merge_1"
   - lane_id: "main_1_3"
     waypoints: [[100, 0], [120, 0]]
   - lane_id: "merge_1"
-    waypoints: [[0, -3.5], [100, -3.5]]
+    waypoints: [[-20, -3.5], [100, -3.5]]
     adj_left: "main_1_2"
-  init_spawns:
-  - lane_id: "main_1_2"
-    s_range: [0.0, 100.0] # スポーン位置の範囲[m]
-    d_start: 0.0 # スポーン開始横位置[m]
-    spacing_range: [30.0, 60.0] # スポーン間隔の範囲[m]
-    velocity_range: [10.0, 15.0] # 初期速度の範囲[m/s]
-    policies_distribution:
-      IDM_Aggressive: 0.0
-      IDM_Conservative: 0.0
-      IDM_Normal: 1.0
   spawn_points:
   - id: "spawn_1"
     lane_id: "main_1_1"
-    arrive_rate: 0.5 # 到着率[車両/s]
-    s_start: -40.0 # スポーン開始位置[m]
+    arrive_rate: 0.3 # 到着率[車両/s]
+    s_start: -20.0 # スポーン開始位置[m]
     d_start: 0.0 # スポーン開始横位置[m]
     velocity_range: [10.0, 15.0]
     policies_distribution:
@@ -102,3 +122,35 @@ arrb_model:
   d_1: 0.0269  # 燃料消費モデルのd_1項
   d_2: 0.0171  # 燃料消費モデルのd_2項
   d_3: 0.000672  # 燃料消費モデルのd_3項
+
+reward:
+  global_reward_scale: 1.0 # グローバル報酬のスケール
+
+  success_reward: 1.0 # 合流成功の報酬
+  collision_penalty: -1.0 # 衝突ペナルティ
+  lane_deviation_penalty: -1.0 # 車線離脱ペナルティ
+  timeout_penalty: -1.0 # タイムアウトペナルティ
+
+  y_position_reward:
+    enabled: true # y位置に基づく報酬の有効化
+    weight: 0.025 # y位置に基づく報酬の重み
+    std: {}
+    target: 0 # 目標y位置[m]
+
+  target_velocity_reward:
+    enabled: true # 目標速度に基づく報酬の有効化
+    weight: 0.15 # 目標速度に基づく報酬の重み
+    std: 2.0 # 目標速度に基づく報酬の標準偏差
+    target: 15.0 # 目標速度[m/s]
+
+  following_vehicle_deceleration_penalty:
+    enabled: true # 前方車両の減速ペナルティの有効化
+    weight: 0.01 # 前方車両の減速ペナルティの重み
+    std: {}
+    target: {}
+
+  jerk_penalty:
+    enabled: true # ジャークペナルティの有効化
+    weight: 0.0025 # ジャークペナルティの重み
+    std: {}
+    target: {}

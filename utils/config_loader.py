@@ -5,7 +5,9 @@ from typing import List, Dict, Any, Union
 @dataclass(frozen=True)
 class SimulationConfig:
     time_step: float
+    warmup_time: float
     total_time: float
+    goal_x: float
 
 @dataclass(frozen=True)
 class VisualizationConfig:
@@ -21,8 +23,8 @@ class VisualizationConfig:
 class RoadNetworkConfig:
     lane_width: float
     lanes: List[Dict[str, Any]]
-    init_spawns: List[Dict[str, Any]]
     spawn_points: List[Dict[str, Any]]
+
 @dataclass(frozen=True)
 class ARRBModelParams:
     delta: float
@@ -31,6 +33,7 @@ class ARRBModelParams:
     d_1: float
     d_2: float
     d_3: float
+
 @dataclass(frozen=True)
 class VehicleConfig:
     mass: float
@@ -54,7 +57,9 @@ class IDMParams:
 @dataclass(frozen=True)
 class MPCParams:
     # MPCのパラメータを定義するクラス
-    pass
+    mpc_horizon: int
+    mpc_time_step: float
+
 @dataclass(frozen=True)
 class RLParams:
     # 強化学習のパラメータを定義するクラス
@@ -63,7 +68,8 @@ class RLParams:
 @dataclass(frozen=True)
 class RLMPCParams:
     # RLMPCのパラメータを定義するクラス
-    pass
+    mpc_horizon: int
+    mpc_time_step: float
 
 @dataclass(frozen=True)
 class PolicyConfig:
@@ -73,6 +79,25 @@ class PolicyConfig:
     sensor_range: List[float]
     color: str
 
+@dataclass(frozen=True)
+class RewardParams:
+    enabled: bool
+    weight: float
+    std: float
+    target: float
+
+@dataclass(frozen=True)
+class RewardConfig:
+    success_reward: float
+    collision_penalty: float
+    lane_deviation_penalty: float
+    timeout_penalty: float
+
+    y_position_reward: RewardParams
+    target_velocity_reward: RewardParams
+    following_vehicle_deceleration_penalty: RewardParams
+    jerk_penalty: RewardParams
+
 @dataclass
 class MasterConfig:
     simulation: SimulationConfig
@@ -81,6 +106,7 @@ class MasterConfig:
     vehicle: VehicleConfig
     policies: Dict[str, PolicyConfig] = field(default_factory=dict)
     arrb_model: ARRBModelParams = field(default=None)
+    reward: RewardConfig = field(default=None)
 
     @classmethod
     def from_yaml(cls, file_path: str) -> 'MasterConfig':
@@ -117,8 +143,19 @@ class MasterConfig:
                 ],
                 color=policy_info.get('color', 'blue')
             )
-
         config_dict['policies'] = policy_configs
+
+        reward_config = RewardConfig(
+            success_reward=config_dict['reward']['success_reward'],
+            collision_penalty=config_dict['reward']['collision_penalty'],
+            lane_deviation_penalty=config_dict['reward']['lane_deviation_penalty'],
+            timeout_penalty=config_dict['reward']['timeout_penalty'],
+            y_position_reward=RewardParams(**config_dict['reward']['y_position_reward']),
+            target_velocity_reward=RewardParams(**config_dict['reward']['target_velocity_reward']),
+            following_vehicle_deceleration_penalty=RewardParams(**config_dict['reward']['following_vehicle_deceleration_penalty']),
+            jerk_penalty=RewardParams(**config_dict['reward']['jerk_penalty'])
+        )
+        config_dict['reward'] = reward_config
 
         return cls(
             simulation=SimulationConfig(**config_dict['simulation']),
@@ -126,5 +163,6 @@ class MasterConfig:
             road_network=RoadNetworkConfig(**config_dict['road_network']),
             vehicle=VehicleConfig(**config_dict['vehicle']),
             policies=config_dict['policies'],
-            arrb_model=ARRBModelParams(**config_dict['arrb_model'])
+            arrb_model=ARRBModelParams(**config_dict['arrb_model']),
+            reward=config_dict['reward']
         )
