@@ -20,6 +20,26 @@ class Lane:
         self.left_lane_id = None
         self.right_lane_id = None
 
+        # 左右の境界線ウェイポイントを計算
+        self._compute_boundary_waypoints()
+
+    def _compute_boundary_waypoints(self):
+        """左右の境界線ウェイポイントを計算するメソッド"""
+        self.left_waypoints = []
+        self.right_waypoints = []
+
+        for s in self.s_coords:
+            # 左側の境界線（d = width/2）
+            x_left, y_left = self.get_cartesian(s, self.width / 2)
+            self.left_waypoints.append([x_left, y_left])
+
+            # 右側の境界線（d = -width/2）
+            x_right, y_right = self.get_cartesian(s, -self.width / 2)
+            self.right_waypoints.append([x_right, y_right])
+
+        self.left_waypoints = np.array(self.left_waypoints)
+        self.right_waypoints = np.array(self.right_waypoints)
+
     def get_cartesian(self, s, d):
         """s, d座標をx, y座標に変換する関数
         Args
@@ -76,3 +96,8 @@ class Lane:
         d_closest = d_values[closest_index]
 
         return s_closest, d_closest
+
+    def is_within_bounds(self, x, y):
+        """座標が車線の範囲内にあるかをチェックするメソッド"""
+        s, d = self.get_frenet(x, y)
+        return 0 <= s <= self.s_coords[-1] and -self.width / 2 <= d <= self.width / 2

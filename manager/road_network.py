@@ -4,7 +4,11 @@ class RoadNetwork:
     def __init__(self, config):
         self.config = config
         self.lanes = {}
-        self.setup_lanes(self.config)
+        self._setup_lanes()
+
+    def reset(self):
+        self.lanes = {}
+        self._setup_lanes()
 
     def add_lane(self, lane):
         self.lanes[lane.lane_id] = lane
@@ -24,15 +28,15 @@ class RoadNetwork:
             return self.get_lane(lane.right_lane_id)
         return None
 
-    def is_within_bounds(self, s, d):
-        """s, d座標が道路ネットワークの範囲内にあるかを判定するメソッド"""
+    def is_within_bounds(self, x, y):
+        """座標が道路ネットワークの範囲内にあるかをチェックするメソッド"""
         for lane in self.lanes.values():
-            if 0 <= s <= lane.s_coords[-1] and -lane.width / 2 <= d <= lane.width / 2:
+            if lane.is_within_bounds(x, y):
                 return True
         return False
 
     def _setup_lanes(self):
-        lane_factory = LaneFactory()
+        lane_factory = LaneFactory(self.config)
         for lane_config in self.config.road_network.lanes:
             lane = lane_factory.create_lane(lane_config)
             self.add_lane(lane)

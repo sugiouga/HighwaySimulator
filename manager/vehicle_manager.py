@@ -5,21 +5,7 @@ from utils.safety_checker import SafetyChecker
 class VehicleManager:
     def __init__(self, config):
         self.config = config
-        self.factory = VehicleFactory(config.vehicle, config.policies)
-
-    def initialize(self, traffic_manager):
-        """シミュレーション開始時に初期車両をスポーンするメソッド"""
-        for init_spawn in self.config.road_network.init_spawns:
-            lane = traffic_manager.road_network.get_lane(init_spawn.lane_id)
-            s = np.random.uniform(*init_spawn.s_range)
-            d = init_spawn.d_start
-            velocity = np.random.uniform(*init_spawn.velocity_range)
-            policy_type = np.random.choice(
-                list(init_spawn.policies_distribution.keys()),
-                p=list(init_spawn.policies_distribution.values())
-            )
-            vehicle = self.factory.create_vehicle(vehicle_id=f"{len(traffic_manager.vehicles) + 1}_{policy_type}", lane_id=init_spawn.lane_id, init_state=[s, d, 0.0, velocity, 0.0], policy_id=policy_type)
-            traffic_manager.add_vehicle(vehicle)
+        self.factory = VehicleFactory(config)
 
     def update(self, traffic_manager):
         """車両のスポーンと削除を管理するメソッド"""
@@ -36,16 +22,23 @@ class VehicleManager:
     def _handle_spawning(self, traffic_manager, dt):
         """スポーンポイントから車両をスポーンするメソッド"""
         for spawn_point in self.config.road_network.spawn_points:
-            if np.random.rand() < spawn_point.arrive_rate * dt:
-                lane = traffic_manager.road_network.get_lane(spawn_point.lane_id)
-                s = np.random.uniform(spawn_point.s_start, spawn_point.s_start + 10.0) # スポーン位置の範囲を広げる
-                d = spawn_point.d_start
-                velocity = np.random.uniform(*spawn_point.velocity_range)
-                policy_type = np.random.choice(
-                    list(spawn_point.policies_distribution.keys()),
-                    p=list(spawn_point.policies_distribution.values())
-                )
-                vehicle = self.factory.create_vehicle(vehicle_id=f"{len(traffic_manager.vehicles) + 1}_{policy_type}", lane_id=spawn_point.lane_id, init_state=[s, d, 0.0, velocity, 0.0], policy_id=policy_type)
+            # support dict or object
+            arrive_rate = spawn_point.get('arrive_rate') if isinstance(spawn_point, dict) else getattr(spawn_point, 'arrive_rate')
+            if np.random.rand() < arrive_rate * dt:
+                lane_id = spawn_point.get('lane_id') if isinstance(spawn_point, dict) else getattr(spawn_point, 'lane_id')
+                s_start = spawn_point.get('s_start') if isinstance(spawn_point, dict) else getattr(spawn_point, 's_start')
+                d_start = spawn_point.get('d_start') if isinstance(spawn_point, dict) else getattr(spawn_point, 'd_start')
+                velocity_range = spawn_point.get('velocity_range') if isinstance(spawn_point, dict) else getattr(spawn_point, 'velocity_range')
+                policies_distribution = spawn_point.get('policies_distribution') if isinstance(spawn_point, dict) else getattr(spawn_point, 'policies_distribution')
+
+                lane = traffic_manager.road_network.get_lane(lane_id)
+                s = np.random.uniform(s_start, s_start + 10.0) # スポーン位置の範囲を広げる
+                d = d_start
+                velocity = np.random.uniform(*velocity_range)
+                policy_type = np.random.choice(list(policies_distribution.keys()), p=list(policies_distribution.values()))
+                # s, d座標からx, y座標に変換
+                x, y = lane.get_cartesian(s, d)
+                vehicle = self.factory.create_vehicle(vehicle_id=f"{len(traffic_manager.vehicles) + 1}_{policy_type}", lane_id=lane_id, init_state=[x, y, 0.0, velocity, 0.0], policy_id=policy_type, is_ego=False)
                 traffic_manager.add_vehicle(vehicle)
 
     def _remove_out_of_bounds_vehicles(self, traffic_manager):

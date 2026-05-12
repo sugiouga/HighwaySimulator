@@ -1,4 +1,4 @@
-from component.lane import Lane
+from component.lane.lane import Lane
 
 class LaneFactory:
     def __init__(self, config):
