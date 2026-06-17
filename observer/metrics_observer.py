@@ -14,8 +14,12 @@ class MetricsObserver(BaseObserver):
                 'yaw': vehicle.yaw,
                 'velocity': vehicle.velocity,
                 'steering_angle': vehicle.steering_angle,
-                'acceleration': vehicle.acceleration,
-                'steering_rate': vehicle.steering_rate
+                'acceleration': getattr(vehicle, 'acceleration', None) if getattr(vehicle, 'acceleration', None) is not None else (
+                    float(vehicle.current_action[0]) if hasattr(vehicle, 'current_action') and vehicle.current_action is not None and len(getattr(vehicle, 'current_action', [])) > 0 else 0.0
+                ),
+                'steering_rate': getattr(vehicle, 'steering_rate', None) if getattr(vehicle, 'steering_rate', None) is not None else (
+                    float(vehicle.current_action[1]) if hasattr(vehicle, 'current_action') and vehicle.current_action is not None and len(getattr(vehicle, 'current_action', [])) > 1 else 0.0
+                )
             }
             self.logs.append(log_entry)
 

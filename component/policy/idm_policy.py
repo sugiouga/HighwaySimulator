@@ -18,7 +18,7 @@ class IDMPolicy(BasePolicy):
 
         self.desired_velocity = idm_config.desired_velocity
         self.desired_time_headway = idm_config.desired_time_headway
-        self.min_spacing = idm_config.min_spacing
+        self.min_spacing = idm_config.min_spacing + getattr(vehicle_config, 'length', 0.0)/2  # 最小車間距離は車両の長さを考慮
         self.max_acceleration = vehicle_config.max_acceleration
         self.comfortable_deceleration = idm_config.comfortable_deceleration
 
@@ -50,11 +50,20 @@ class IDMPolicy(BasePolicy):
 
             lead_velocity = float(np.nan_to_num(lead_velocity, nan=0.0, posinf=0.0, neginf=0.0))
             lead_position = float(np.nan_to_num(lead_position, nan=0.0, posinf=0.0, neginf=0.0))
+            ego_x = float(np.nan_to_num(state[0], nan=0.0, posinf=0.0, neginf=0.0))
+            ego_y = float(np.nan_to_num(state[1], nan=0.0, posinf=0.0, neginf=0.0))
+            ego_yaw = float(np.nan_to_num(state[2], nan=0.0, posinf=0.0, neginf=0.0))
+            lead_y = float(np.nan_to_num(getattr(lead_vehicle, 'y', ego_y), nan=ego_y, posinf=ego_y, neginf=ego_y))
 
             delta_v = velocity - lead_velocity  # 速度差
             denom = 2.0 * np.sqrt(max_acceleration * comfortable_deceleration)
             s_alpha = self.min_spacing + max(0.0, velocity * self.desired_time_headway + (velocity * delta_v) / max(denom, 1e-6))  # 安全距離
-            gap = max(abs(state[0] - lead_position), 0.1)
+            rel_x = lead_position - ego_x
+            rel_y = lead_y - ego_y
+            longitudinal_gap = rel_x * np.cos(ego_yaw) + rel_y * np.sin(ego_yaw)
+            ego_length = float(getattr(self.vehicle_config, 'length', 0.0))
+            lead_length = float(getattr(lead_vehicle, 'length', ego_length))
+            gap = max(longitudinal_gap - 0.5 * (ego_length + lead_length), 0.1)
 
             v_ratio = np.clip(velocity / desired_velocity, -20.0, 20.0)
             interaction = np.clip((s_alpha / gap) ** 2, 0.0, 1e6)

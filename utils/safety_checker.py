@@ -10,6 +10,8 @@ class SafetyChecker:
             for j in range(i + 1, len(traffic_manager.vehicles)):
                 v1 = traffic_manager.vehicles[i]
                 v2 = traffic_manager.vehicles[j]
+                if v1.policy.__class__.__name__ == "GhostPolicy" or v2.policy.__class__.__name__ == "GhostPolicy":
+                    continue
                 dx = float(np.nan_to_num(v1.x - v2.x, nan=0.0, posinf=0.0, neginf=0.0))
                 dy = float(np.nan_to_num(v1.y - v2.y, nan=0.0, posinf=0.0, neginf=0.0))
                 distance = float(np.hypot(dx, dy))
@@ -57,6 +59,8 @@ class SafetyChecker:
         """車線外にいる車両をチェックするメソッド"""
         vehicles_to_remove = []
         for vehicle in traffic_manager.vehicles:
+            if vehicle.policy.__class__.__name__ == "GhostPolicy":
+                continue
             # 車両の4隅の座標を計算する
             corners = vehicle.get_corners()
             # 4隅のいずれかが道路ネットワークの範囲外にある場合は削除対象とする

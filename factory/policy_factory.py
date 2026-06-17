@@ -1,4 +1,9 @@
 from component.policy.idm_policy import IDMPolicy
+from component.policy.mobil_policy import MOBILPolicy
+from component.policy.mpc_policy import MPCPolicy
+from component.policy.rl_policy import RLPolicy
+from component.policy.rl_mpc_policy import RLMPCPolicy
+from component.policy.ghost_policy import GhostPolicy
 
 class PolicyFactory:
     def __init__(self, config):
@@ -14,25 +19,31 @@ class PolicyFactory:
 
         if policy_config.type == "IDM":
             policy = IDMPolicy(vehicle_config=self.config.vehicle, idm_config=policy_config.parameters)
-            # attach sensor_range and color from policy_config for runtime use
+            setattr(policy, 'sensor_range', policy_config.sensor_range)
+            setattr(policy, 'color', policy_config.color)
+            return policy
+        elif policy_config.type == "MOBIL":
+            policy = MOBILPolicy(vehicle_config=self.config.vehicle, mobil_config=policy_config.parameters)
             setattr(policy, 'sensor_range', policy_config.sensor_range)
             setattr(policy, 'color', policy_config.color)
             return policy
         elif policy_config.type == "MPC":
-            from component.policy.mpc_policy import MPCPolicy
             policy = MPCPolicy(vehicle_config=self.config.vehicle, policy_config=policy_config)
             setattr(policy, 'sensor_range', policy_config.sensor_range)
             setattr(policy, 'color', policy_config.color)
             return policy
         elif policy_config.type == "RL":
-            from component.policy.rl_policy import RLPolicy
             policy = RLPolicy(vehicle_config=self.config.vehicle, policy_config=policy_config)
             setattr(policy, 'sensor_range', policy_config.sensor_range)
             setattr(policy, 'color', policy_config.color)
             return policy
         elif policy_config.type == "RLMPC":
-            from component.policy.rl_mpc_policy import RLMPCPolicy
             policy = RLMPCPolicy(vehicle_config=self.config.vehicle, policy_config=policy_config)
+            setattr(policy, 'sensor_range', policy_config.sensor_range)
+            setattr(policy, 'color', policy_config.color)
+            return policy
+        elif policy_config.type == "Ghost":
+            policy = GhostPolicy(vehicle_config=self.config.vehicle, policy_config=policy_config)
             setattr(policy, 'sensor_range', policy_config.sensor_range)
             setattr(policy, 'color', policy_config.color)
             return policy

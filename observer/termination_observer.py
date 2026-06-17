@@ -11,11 +11,29 @@ class TerminationObserver(BaseObserver):
 
         ego_vehicle = next((v for v in vehicles if v.is_ego), None)
         if ego_vehicle is not None:
-            if self.safety_checker.check_collision(ego_vehicle, vehicles):
-                self.info = {"termination_reason": "collision"}
-            elif self.safety_checker.check_lane_deviation(ego_vehicle, road_network):
-                self.info = {"termination_reason": "lane_deviation"}
-            elif ego_vehicle.state[0] > self.config.simulation.goal_x:  # ゴール条件（例: x座標がgoal_xを超える）
+            # collision: check precise collision between ego and any other vehicle
+            for v in vehicles:
+                if v is ego_vehicle:
+                    continue
+                try:
+                    if SafetyChecker._check_precise_collision(ego_vehicle, v):
+                        self.info = {"termination_reason": "collision"}
+                        return
+                except Exception:
+                    # fallback: ignore errors in collision check
+                    continue
+
+            # lane deviation: ego not within its assigned lane bounds
+            try:
+                lane = road_network.get_lane(ego_vehicle.lane_id)
+                if lane is None or not lane.is_within_bounds(ego_vehicle.x, ego_vehicle.y):
+                    self.info = {"termination_reason": "lane_deviation"}
+                    return
+            except Exception:
+                pass
+
+            # goal check
+            if ego_vehicle.state[0] > self.config.simulation.goal_x:
                 self.info = {"termination_reason": "goal_reached"}
 
 

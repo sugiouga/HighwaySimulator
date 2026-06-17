@@ -60,14 +60,6 @@ class BaseVehicle(ABC):
     def steering_angle(self):
         """車両のステアリング角を返すプロパティ"""
         return self.state[4]
-    @property
-    def acceleration(self):
-        """車両の加速度を返すプロパティ"""
-        return self.current_action[0]
-    @property
-    def steering_rate(self):
-        """車両のステアリングレートを返すプロパティ"""
-        return self.current_action[1]
 
     @abstractmethod
     def get_dynamics(self, state, action):

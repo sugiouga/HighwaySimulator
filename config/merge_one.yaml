@@ -1,0 +1,121 @@
+simulation:
+  time_step: 0.1
+  warmup_time: 0.0
+  total_time: 120.0
+  goal_x: 150.0
+
+visualization:
+  enable: false
+  screen_width: 1280
+  screen_height: 720
+  screen_color: white
+  caption: Merge one
+  ppm: 6.0
+  origin_x: 0.0
+
+road_network:
+  lane_width: 3.5
+  lanes:
+    - lane_id: merge_1
+      waypoints:
+        - [0.0, -7.0]
+        - [25.0, -7.0]
+        - [50.0, -3.5]
+        - [75.0, 0.0]
+        - [200.0, 0.0]
+      adj_right: main_1
+    - lane_id: main_1
+      waypoints:
+        - [0.0, 0.0]
+        - [200.0, 0.0]
+      adj_left: merge_1
+  init_vehicles:
+    - id: main_1_lead
+      lane_id: main_1
+      s: 35.0
+      d: 0.0
+      velocity: 8.0
+      policy_id: main_mobil
+  spawn_points: []
+
+vehicle:
+  mass: 1500.0
+  length: 4.5
+  width: 1.8
+  min_velocity: 0.0
+  max_velocity: 35.0
+  min_acceleration: -6.0
+  max_acceleration: 3.0
+  max_steering_angle: 35.0
+  max_steering_rate: 0.6
+  model: kinematic_bicycle
+
+policies:
+  DRL_Agent:
+    policy_id: DRL_Agent
+    type: RL
+    parameters: {}
+    sensor_range: [100.0, 8.0]
+    color: red
+  main_mobil:
+    policy_id: main_mobil
+    type: MOBIL
+    parameters:
+      desired_velocity: 10.0
+      desired_time_headway: 1.5
+      min_spacing: 2.0
+      comfortable_deceleration: 2.0
+      politeness_factor: 0.2
+      acceleration_threshold: 0.1
+    sensor_range: [100.0, 8.0]
+    color: blue
+
+arrb_model:
+  delta: 0.0
+  gamma1: 0.0
+  gamma2: 0.0
+  d_1: 0.0
+  d_2: 0.0
+  d_3: 0.0
+
+reward:
+  success_reward: 100.0
+  collision_penalty: -100.0
+  lane_deviation_penalty: -1.0
+  timeout_penalty: -10.0
+  y_position_reward:
+    enabled: false
+    weight: 1.0
+    std: 1.0
+    target: 0.0
+  target_velocity_reward:
+    enabled: false
+    weight: 1.0
+    std: 1.0
+    target: 10.0
+  following_vehicle_deceleration_penalty:
+    enabled: false
+    weight: 1.0
+    std: 1.0
+    target: 0.0
+  jerk_penalty:
+    enabled: false
+    weight: 1.0
+    std: 1.0
+    target: 0.0
+
+sac:
+  policy: MlpPolicy
+  learning_rate: 0.0003
+  buffer_size: 100000
+  learning_starts: 1000
+  batch_size: 256
+  tau: 0.005
+  gamma: 0.99
+  train_freq: 1
+  gradient_steps: 1
+  ent_coef: auto
+  target_update_interval: 1
+  device: auto
+  policy_kwargs:
+    net_arch: [256, 256]

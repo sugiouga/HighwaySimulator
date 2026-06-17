@@ -8,12 +8,16 @@ class TrafficManager:
         self.config = config
         self.dt = dt
         self.current_time = 0.0
+        self._step_count = 0
         self.vehicles = []
         self.observers = []
         self.perceptions = {}
 
         self.road_network.reset()
         self.vehicle_manager = VehicleManager(self.config)
+        # 初期車両が設定されている場合はスポーンする
+        if config.road_network.init_vehicles is not None and len(config.road_network.init_vehicles) > 0:
+            self.vehicle_manager.spawn_init_vehicles(self)
 
         for vehicle in self.vehicles:
             self._register_perception(vehicle)
@@ -55,7 +59,8 @@ class TrafficManager:
             vehicle.update_state(self.dt)
 
         # 4. 後処理
-        self.current_time += self.dt
+        self._step_count += 1
+        self.current_time = self._step_count * self.dt  # 誤差なし
         self._notify_observers()
 
     def _notify_observers(self):

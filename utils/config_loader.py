@@ -1,6 +1,6 @@
 import yaml
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Union
+from typing import List, Dict, Any, Union, Optional
 
 @dataclass(frozen=True)
 class SimulationConfig:
@@ -23,6 +23,7 @@ class VisualizationConfig:
 class RoadNetworkConfig:
     lane_width: float
     lanes: List[Dict[str, Any]]
+    init_vehicles: List[Dict[str, Any]]
     spawn_points: List[Dict[str, Any]]
 
 @dataclass(frozen=True)
@@ -55,6 +56,28 @@ class IDMParams:
     comfortable_deceleration: float
 
 @dataclass(frozen=True)
+class MOBILParams:
+    desired_velocity: float
+    desired_time_headway: float
+    min_spacing: float
+    comfortable_deceleration: float
+    politeness_factor: float
+    acceleration_threshold: float
+    # optional lane-change gap overrides
+    lane_change_min_front_gap: Optional[float] = None
+    lane_change_min_rear_gap: Optional[float] = None
+    lane_change_cooldown_steps: Optional[int] = None
+    lane_change_steering_smoothing: Optional[float] = None
+    lane_change_duration: Optional[float] = None
+    lane_change_pure_pursuit_gain: Optional[float] = None
+    lane_change_minimum_lf: Optional[float] = None
+    # PID制御ゲイン
+    pid_kp: Optional[float] = None
+    pid_ki: Optional[float] = None
+    pid_kd: Optional[float] = None
+    pid_integral_limit: Optional[float] = None
+
+@dataclass(frozen=True)
 class MPCParams:
     # MPCのパラメータを定義するクラス
     mpc_horizon: int
@@ -72,10 +95,15 @@ class RLMPCParams:
     mpc_time_step: float
 
 @dataclass(frozen=True)
+class GhostParams:
+    # ゴースト車両のパラメータを定義するクラス
+    pass
+
+@dataclass(frozen=True)
 class PolicyConfig:
     id: str
     type: str
-    parameters: Union[IDMParams, MPCParams, RLParams, RLMPCParams]
+    parameters: Union[IDMParams, MOBILParams, MPCParams, RLParams, RLMPCParams, GhostParams]
     sensor_range: List[float]
     color: str
 
@@ -92,11 +120,26 @@ class RewardConfig:
     collision_penalty: float
     lane_deviation_penalty: float
     timeout_penalty: float
-
     y_position_reward: RewardParams
     target_velocity_reward: RewardParams
     following_vehicle_deceleration_penalty: RewardParams
     jerk_penalty: RewardParams
+
+@dataclass(frozen=True)
+class SACConfig:
+    policy: str = "MlpPolicy"
+    learning_rate: float = 3e-4
+    buffer_size: int = 100000
+    learning_starts: int = 1000
+    batch_size: int = 256
+    tau: float = 0.005
+    gamma: float = 0.99
+    train_freq: int = 1
+    gradient_steps: int = 1
+    ent_coef: Union[str, float] = "auto"
+    target_update_interval: int = 1
+    device: str = "auto"
+    policy_kwargs: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class MasterConfig:
@@ -107,6 +150,7 @@ class MasterConfig:
     policies: Dict[str, PolicyConfig] = field(default_factory=dict)
     arrb_model: ARRBModelParams = field(default=None)
     reward: RewardConfig = field(default=None)
+    sac: SACConfig = field(default_factory=SACConfig)
 
     @classmethod
     def from_yaml(cls, file_path: str) -> 'MasterConfig':
@@ -124,12 +168,16 @@ class MasterConfig:
         for policy_name, policy_info in policy_items:
             if policy_info['type'] == 'IDM':
                 parameters = IDMParams(**policy_info['parameters'])
+            elif policy_info['type'] == 'MOBIL':
+                parameters = MOBILParams(**policy_info['parameters'])
             elif policy_info['type'] == 'MPC':
                 parameters = MPCParams(**policy_info['parameters'])
             elif policy_info['type'] == 'RL':
                 parameters = RLParams(**policy_info['parameters'])
             elif policy_info['type'] == 'RLMPC':
                 parameters = RLMPCParams(**policy_info['parameters'])
+            elif policy_info['type'] == 'Ghost':
+                parameters = GhostParams(**policy_info['parameters'])
             else:
                 raise ValueError(f"Unknown policy type: {policy_info['type']}")
 
@@ -157,6 +205,9 @@ class MasterConfig:
         )
         config_dict['reward'] = reward_config
 
+        sac_config = SACConfig(**config_dict.get('sac', {}))
+        config_dict['sac'] = sac_config
+
         return cls(
             simulation=SimulationConfig(**config_dict['simulation']),
             visualization=VisualizationConfig(**config_dict['visualization']),
@@ -164,5 +215,6 @@ class MasterConfig:
             vehicle=VehicleConfig(**config_dict['vehicle']),
             policies=config_dict['policies'],
             arrb_model=ARRBModelParams(**config_dict['arrb_model']),
-            reward=config_dict['reward']
+            reward=config_dict['reward'],
+            sac=config_dict['sac']
         )

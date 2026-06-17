@@ -1,6 +1,7 @@
 import numpy as np
 from factory.vehicle_factory import VehicleFactory
 from utils.safety_checker import SafetyChecker
+from component.policy.ghost_policy import GhostPolicy
 
 class VehicleManager:
     def __init__(self, config):
@@ -18,6 +19,20 @@ class VehicleManager:
         self._handle_collisions(traffic_manager)
         # lane_idの更新
         self._update_lane_id(traffic_manager)
+
+    def spawn_init_vehicles(self, traffic_manager):
+        """初期車両をスポーンするメソッド"""
+        for vehicle_config in self.config.road_network.init_vehicles:
+            lane_id = vehicle_config.get('lane_id') if isinstance(vehicle_config, dict) else getattr(vehicle_config, 'lane_id')
+            s = vehicle_config.get('s') if isinstance(vehicle_config, dict) else getattr(vehicle_config, 's')
+            d = vehicle_config.get('d') if isinstance(vehicle_config, dict) else getattr(vehicle_config, 'd')
+            velocity = vehicle_config.get('velocity') if isinstance(vehicle_config, dict) else getattr(vehicle_config, 'velocity')
+            policy_id = vehicle_config.get('policy_id') if isinstance(vehicle_config, dict) else getattr(vehicle_config, 'policy_id')
+
+            lane = traffic_manager.road_network.get_lane(lane_id)
+            x, y = lane.get_cartesian(s, d)
+            vehicle = self.factory.create_vehicle(vehicle_id=vehicle_config.get('id', f"init_{len(traffic_manager.vehicles) + 1}"), lane_id=lane_id, init_state=[x, y, 0.0, velocity, 0.0], policy_id=policy_id, is_ego=False)
+            traffic_manager.add_vehicle(vehicle)
 
     def _handle_spawning(self, traffic_manager, dt):
         """スポーンポイントから車両をスポーンするメソッド"""
@@ -54,7 +69,32 @@ class VehicleManager:
             traffic_manager.vehicles.remove(vehicle)
 
     def _update_lane_id(self, traffic_manager):
+        """Update each vehicle's lane_id.
+
+        Priority:
+        1) Ghost車両は固定（更新しない）
+        2) 車線変更中でターゲット車線がある場合は、その車線IDを優先
+        3) それ以外は現在位置から判定
+
+        This checks all lanes in the road network and assigns the first lane
+        for which `lane.is_within_bounds(vehicle.x, vehicle.y)` is True.
+        If no lane matches, the vehicle's lane_id is left unchanged.
+        """
         for vehicle in traffic_manager.vehicles:
-            lane = traffic_manager.road_network.get_lane(vehicle.lane_id)
-            if lane:
-                vehicle.update_lane_id(lane)
+            # Ghost車両はlane_idを固定する
+            if isinstance(getattr(vehicle, "policy", None), GhostPolicy):
+                continue
+
+            assigned = False
+            for lane in traffic_manager.road_network.lanes.values():
+                try:
+                    if lane.is_within_bounds(vehicle.x, vehicle.y):
+                        vehicle.update_lane_id(lane)
+                        assigned = True
+                        break
+                except Exception:
+                    # keep existing lane_id on any unexpected error
+                    continue
+            if not assigned:
+                # fallback: keep current lane_id (no change)
+                pass
