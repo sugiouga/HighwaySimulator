@@ -13,3 +13,10 @@ class RLPolicy(BasePolicy):
 
         self.vehicle_config = vehicle_config
         self.policy_config = policy_config
+        # Placeholder for RL-based policy. For training the ego vehicle this
+        # policy object is instantiated but `is_ego` vehicles will have actions
+        # provided by the external agent; provide a safe default action here.
+
+    def action(self, state: list, environment_info: dict):
+        """Return a safe zero-action by default: [acceleration, steering_rate]."""
+        return [0.0, 0.0]

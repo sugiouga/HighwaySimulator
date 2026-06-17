@@ -1,6 +1,6 @@
-simulation:
+﻿simulation:
   time_step: 0.1 # シミュレーションの時間ステップ[s]
-  warmup_time: 10.0 # ウォームアップ時間[s]
+  warmup_time: 5.0 # ウォームアップ時間[s]
   total_time: 30.0 # シミュレーションの総時間[s]
   goal_x: 115.0 # 目標位置のx座標[m]
 
@@ -47,7 +47,7 @@ policies:
       comfortable_deceleration: 2.0  # 快適な減速度 [m/s^2]
     sensor_range:
       front_distance: 40.0  # 前方向の長さ [m]
-      side_distance: 1.75  # 横方向の幅 [m]
+      side_distance: 1.7  # 横方向の幅 [m]
     color: "blue" # 車両の色
   - policy_id: "IDM_Normal"
     type: "IDM"
@@ -58,7 +58,7 @@ policies:
       comfortable_deceleration: 2.0  # 快適な減速度 [m/s^2]
     sensor_range: [
       40.0,  # 前方向の長さ [m]
-      1.75   # 横方向の幅 [m]
+      1.6   # 横方向の幅 [m]
     ]
     color: "blue" # 車両の色
   - policy_id: "MPC_Agent"
@@ -68,7 +68,7 @@ policies:
       mpc_time_step: 0.1  # MPCの時間ステップ [s]
     sensor_range: [
       40.0,  # 前方向の長さ [m]
-      1.75   # 横方向の幅 [m]
+      1.7   # 横方向の幅 [m]
     ]
     color: "red" # 車両の色
   - policy_id: "DRL_Agent"
@@ -76,7 +76,7 @@ policies:
     parameters: {}
     sensor_range: [
       40.0,  # 前方向の長さ [m]
-      1.75   # 横方向の幅 [m]
+      1.7   # 横方向の幅 [m]
     ]
     color: "red" # 車両の色
   - policy_id: "DRL_MPC_Agent"
@@ -86,7 +86,7 @@ policies:
       mpc_time_step: 0.1  # MPCの時間ステップ [s]
     sensor_range: [
       40.0,  # 前方向の長さ [m]
-      1.75   # 横方向の幅 [m]
+      1.7   # 横方向の幅 [m]
     ]
     color: "red" # 車両の色
 
@@ -109,11 +109,19 @@ road_network:
     arrive_rate: 0.3 # 到着率[車両/s]
     s_start: -20.0 # スポーン開始位置[m]
     d_start: 0.0 # スポーン開始横位置[m]
-    velocity_range: [10.0, 15.0]
+    velocity_range: [6.0, 8.0]
     policies_distribution:
       IDM_Aggressive: 0.0
       IDM_Conservative: 0.0
       IDM_Normal: 1.0
+  init_vehicles:
+  - id: "main_1_1_lead"
+    lane_id: "main_1_1"
+    s: 110.0
+    d: 0.0
+    velocity: 10.0
+    policy_id: "IDM_Normal"
+
 
 arrb_model:
   delta: 0.666  # 燃料消費モデルのデルタ項
@@ -154,3 +162,19 @@ reward:
     weight: 0.0025 # ジャークペナルティの重み
     std: {}
     target: {}
+
+sac:
+  policy: MlpPolicy
+  learning_rate: 0.0003
+  buffer_size: 100000
+  learning_starts: 1000
+  batch_size: 256
+  tau: 0.005
+  gamma: 0.99
+  train_freq: 1
+  gradient_steps: 1
+  ent_coef: auto
+  target_update_interval: 1
+  device: auto
+  policy_kwargs:
+    net_arch: [256, 256]

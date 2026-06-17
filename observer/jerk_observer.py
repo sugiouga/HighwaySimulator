@@ -24,8 +24,17 @@ class JerkObserver(BaseObserver):
         else:
             previous_acceleration = 0.0  # 初回は加速度を0とする
 
-        current_acceleration = vehicle.acceleration
-        jerk = (current_acceleration - previous_acceleration) / self.config.time_step
+        # obtain current acceleration from vehicle attribute or fallback to current_action[0]
+        if getattr(vehicle, 'acceleration', None) is not None:
+            current_acceleration = float(vehicle.acceleration)
+        elif hasattr(vehicle, 'current_action') and vehicle.current_action is not None and len(getattr(vehicle, 'current_action', [])) > 0:
+            current_acceleration = float(vehicle.current_action[0])
+        else:
+            current_acceleration = 0.0
+
+        # time step is stored under config.simulation.time_step
+        dt = float(getattr(getattr(self.config, 'simulation', None), 'time_step', 0.1))
+        jerk = (current_acceleration - previous_acceleration) / max(dt, 1e-6)
 
         # 現在の加速度を保存しておく
         vehicle.previous_acceleration = current_acceleration

@@ -23,11 +23,18 @@ class Perception:
         全車両リストから、自車の長方形範囲内かつ関係ある車線の車両を抽出
         """
 
-        # RoadNetworkから隣接車線IDを取得
+        # RoadNetworkから隣接車線オブジェクトを取得
+        left_lane = road_network.get_left_lane(ego.lane_id)
+        right_lane = road_network.get_right_lane(ego.lane_id)
+        
+        # lane_idを抽出
+        left_lane_id = left_lane.lane_id if left_lane else None
+        right_lane_id = right_lane.lane_id if right_lane else None
+        
         target_lanes = [
             ego.lane_id,
-            road_network.get_left_lane(ego.lane_id),
-            road_network.get_right_lane(ego.lane_id)
+            left_lane_id if left_lane_id else None,
+            right_lane_id if right_lane_id else None
         ]
 
         surrounding_vehicles = SurroundingVehicles()
@@ -38,12 +45,18 @@ class Perception:
             if vehicle.lane_id not in target_lanes:
                 continue  # 関係ない車線の車両はスキップ
 
-            relative_position = self.calculate_relative_position(ego, vehicle)
+            relative_position = self.calculate_relative_position_in_ego_frame(ego, vehicle)
 
             if self.is_within_sensor_range(relative_position):
                 self.classify_surrounding_vehicles(ego, road_network, surrounding_vehicles, vehicle, relative_position)
-        # return as a dict for compatibility with policies
+
         return {
+            'ego_lane_id': ego.lane_id,
+            'ego_lane': road_network.get_lane(ego.lane_id),
+            'left_lane_id': left_lane_id,
+            'right_lane_id': right_lane_id,
+            'left_lane': left_lane,
+            'right_lane': right_lane,
             'left_front': surrounding_vehicles.left_front,
             'left_rear': surrounding_vehicles.left_rear,
             'right_front': surrounding_vehicles.right_front,
@@ -58,6 +71,16 @@ class Perception:
         rel_y = float(np.nan_to_num(vehicle.y - ego.y, nan=0.0, posinf=0.0, neginf=0.0))
         return [rel_x, rel_y]
 
+    def calculate_relative_position_in_ego_frame(self, ego: 'BaseVehicle', vehicle: 'BaseVehicle') -> List[float]:
+        """自車座標系での相対位置を計算するメソッド"""
+        rel_x, rel_y = self.calculate_relative_position(ego, vehicle)
+        cos_yaw = np.cos(ego.yaw)
+        sin_yaw = np.sin(ego.yaw)
+
+        longitudinal = float(np.nan_to_num(rel_x * cos_yaw + rel_y * sin_yaw, nan=0.0, posinf=0.0, neginf=0.0))
+        lateral = float(np.nan_to_num(-rel_x * sin_yaw + rel_y * cos_yaw, nan=0.0, posinf=0.0, neginf=0.0))
+        return [longitudinal, lateral]
+
     def calculate_relative_velocity(self, ego: 'BaseVehicle', vehicle: 'BaseVehicle') -> List[float]:
         """自車と他車の相対速度を計算するメソッド"""
         rel_vx = float(np.nan_to_num(vehicle.vx - ego.vx, nan=0.0, posinf=0.0, neginf=0.0))
@@ -65,13 +88,14 @@ class Perception:
         return [rel_vx, rel_vy]
 
     def is_within_sensor_range(self, relative_position: List[float]) -> bool:
-        """相対位置がセンサーの検出範囲内にあるかを判定するメソッド"""
-        rel_x, rel_y = relative_position
-        rel_x = float(np.nan_to_num(rel_x, nan=0.0, posinf=0.0, neginf=0.0))
-        rel_y = float(np.nan_to_num(rel_y, nan=0.0, posinf=0.0, neginf=0.0))
-        distance = float(np.hypot(rel_x, rel_y))
-        sensor_limit = max(float(self.sensor_range[0]), float(self.sensor_range[1]))
-        return distance <= sensor_limit
+        """自車座標系の相対位置がセンサー範囲内にあるかを判定するメソッド"""
+        longitudinal, lateral = relative_position
+        longitudinal = float(np.nan_to_num(longitudinal, nan=0.0, posinf=0.0, neginf=0.0))
+        lateral = float(np.nan_to_num(lateral, nan=0.0, posinf=0.0, neginf=0.0))
+
+        longitudinal_limit = float(self.sensor_range[0])
+        lateral_limit = float(self.sensor_range[1])
+        return abs(longitudinal) <= longitudinal_limit and abs(lateral) <= lateral_limit
 
     def classify_surrounding_vehicles(self, ego, road_network, surrounding_vehicles, vehicle, relative_position):
         rel_x, rel_y = relative_position

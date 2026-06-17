@@ -20,7 +20,11 @@ class MergingEnv(gym.Env):
 
         # 状態空間と行動空間の定義
         self.observation_space = spaces.Box(low=-1.0, high=1.0, shape=(36,), dtype=np.float32)
-        self.action_space = spaces.Discrete(2)
+        self.action_space = spaces.Box(
+            low=np.array([self.config.vehicle.min_acceleration, -self.config.vehicle.max_steering_rate], dtype=np.float32),
+            high=np.array([self.config.vehicle.max_acceleration, self.config.vehicle.max_steering_rate], dtype=np.float32),
+            dtype=np.float32,
+        )
 
         self.ego_vehicle_id = "ego_vehicle"
         self.road_network = RoadNetwork(config)
@@ -52,7 +56,17 @@ class MergingEnv(gym.Env):
         self._rel_y_abs_max = sensor_side_max
         self._rel_v_abs_max = 2.0 * self._v_max
 
-    def reset(self):
+    def reset(self, seed=None, options=None):
+        """Reset the environment.
+
+        Accepts `seed` and `options` for Gymnasium compatibility and returns (observation, info).
+        """
+        if seed is not None:
+            try:
+                np.random.seed(seed)
+            except Exception:
+                pass
+
         self.road_network.reset()
         self.traffic_manager = TrafficManager(self.road_network, self.config, dt=self.config.simulation.time_step)
 
@@ -68,21 +82,23 @@ class MergingEnv(gym.Env):
         self.ego_vehicle = self.traffic_manager.vehicle_manager.factory.create_vehicle(
             vehicle_id=self.ego_vehicle_id,
             lane_id=lane_id,
-            init_state=[x, y, 0.0, 12.0, 0.0],
+            init_state=[x, y, 0.0, 6.0, 0.0],
             policy_id="DRL_Agent",
             is_ego=True
         )
         self.traffic_manager.add_vehicle(self.ego_vehicle)
 
-        self.traffic_manager.add_observer(self.visualizer)
+        # add observers only if present
+        if self.visualizer is not None:
+            self.traffic_manager.add_observer(self.visualizer)
         self.traffic_manager.add_observer(self.metrics_observer)
         self.traffic_manager.add_observer(self.termination_observer)
         self.traffic_manager.add_observer(self.truncation_observer)
         self.traffic_manager.add_observer(self.jerk_observer)
 
         observation = self._get_observation()
-
-        return observation, {}, {}, {}, {}
+        info = {}
+        return observation, info
 
     def step(self, action):
         # ego車両の行動を更新
@@ -189,7 +205,7 @@ class MergingEnv(gym.Env):
             reward +=  self.config.reward.lane_deviation_penalty
 
         # 時間切れペナルティ
-        if self.tr.get_info().get("termination_reason") == "timeout":
+        if self.truncation_observer.get_info().get("termination_reason") == "timeout":
             reward +=  self.config.reward.timeout_penalty
 
         # y座標に基づく報酬（目標位置に近いほど高い報酬）
@@ -227,12 +243,30 @@ class MergingEnv(gym.Env):
         # 衝突と車線離脱、目標位置への到達のチェック
         if self.termination_observer.get_info().get("termination_reason") in ["collision", "lane_deviation", "goal_reached"]:
             return True
+        return False
 
     def _check_truncation(self):
         # タイムアウトのチェック
-        if self.termination_observer.get_info().get("termination_reason") == "timeout":
+        if self.truncation_observer.get_info().get("termination_reason") == "timeout":
             return True
+        return False
 
     def _get_info(self):
         # 追加の情報を返す（例: 合流の成功、衝突の有無など）
-        pass
+        info = {}
+        # termination info
+        term_info = self.termination_observer.get_info()
+        if term_info:
+            info.update(term_info)
+
+        # truncation info
+        trunc_info = self.truncation_observer.get_info()
+        if trunc_info:
+            info.update(trunc_info)
+
+        # metrics
+        metrics = self.metrics_observer.get_current_metrics(self.ego_vehicle_id)
+        if metrics:
+            info.setdefault('metrics', metrics)
+
+        return info

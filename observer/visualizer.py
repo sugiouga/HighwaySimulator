@@ -59,7 +59,6 @@ class Visualizer(BaseObserver):
         """
         for lane in road_network.lanes.values():
             # 左側の境界線をピクセル座標に変換
-            lane.left_pixel_waypoints = []
             for waypoint in lane.left_waypoints:
                 x, y = waypoint
                 pixel_x = self.origin_x + x * self.ppm
@@ -67,7 +66,6 @@ class Visualizer(BaseObserver):
                 lane.left_pixel_waypoints.append((pixel_x, pixel_y))
 
             # 右側の境界線をピクセル座標に変換
-            lane.right_pixel_waypoints = []
             for waypoint in lane.right_waypoints:
                 x, y = waypoint
                 pixel_x = self.origin_x + x * self.ppm
@@ -75,7 +73,6 @@ class Visualizer(BaseObserver):
                 lane.right_pixel_waypoints.append((pixel_x, pixel_y))
 
             # 中心線をピクセル座標に変換
-            lane.center_pixel_waypoints = []
             for waypoint in lane.waypoints:
                 x, y = waypoint
                 pixel_x = self.origin_x + x * self.ppm
