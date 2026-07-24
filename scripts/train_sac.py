@@ -8,6 +8,11 @@ import sys
 import argparse
 import numpy as np
 
+# stable_baselines3のtensorboardロギング経由でtensorflowが読み込まれる際に出る
+# 無害なoneDNN/abslログを抑制する（tensorflow importより前に設定する必要がある）
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
+
 # ensure project root is on sys.path for imports when executing as script
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT not in sys.path:

@@ -1,6 +1,6 @@
 ﻿simulation:
   time_step: 0.1 # シミュレーションの時間ステップ[s]
-  warmup_time: 10.0 # ウォームアップ時間[s]
+  warmup_time: 5.0 # ウォームアップ時間[s]
   total_time: 30.0 # シミュレーションの総時間[s]
   goal_x: 120.0 # 目標位置のx座標[m]
 
@@ -58,7 +58,7 @@ policies:
       min_spacing: 2.0  # 最小車間距離 [m]
       comfortable_deceleration: 2.0  # 快適な減速度 [m/s^2]
     sensor_range: [
-      100.0,  # 前方向の長さ [m]
+      150.0,  # 前方向の長さ [m]
       1.6   # 横方向の幅 [m]
     ]
     color: "blue" # 車両の色
@@ -121,7 +121,7 @@ road_network:
     lane_id: "merge_1"
     s : 0.0
     d : 0.0
-    velocity: 6.0
+    velocity: 10.0
     policy_id: "DRL_Agent"
     is_ego: true
 
@@ -182,6 +182,41 @@ reward:
     weight: 0.05 # ステアリングレートペナルティの重み
     std: {}
     target: {}
+
+rlmpc:
+  mpc_horizon: 10 # MPCの予測ホライズン[ステップ数]
+  mpc_time_step: 0.1 # MPCの1ステップあたりの時間[s]
+  planning_time_min: 1.0 # 5次多項式軌道生成の計画時間の最小値[s]
+  planning_time_max: 6.0 # 5次多項式軌道生成の計画時間の最大値[s]
+  weights: # MPC重みの初期値・フォールバック値
+    w_pos: 1.0 # 位置追従誤差の重み
+    w_yaw: 0.0 # ヨー角追従誤差の重み
+    w_vel: 1.0 # 速度追従誤差の重み
+    w_accel: 0.5 # 加速度入力のペナルティ重み
+    w_steer: 0.5 # 操舵角入力のペナルティ重み
+    w_steer_rate: 0.5 # 操舵角速度入力のペナルティ重み
+  weight_limits: # DRLが学習するMPC重みの範囲 [min, max]
+    w_pos: [0.1, 50.0]
+    w_yaw: [0.0, 10.0]
+    w_vel: [0.1, 50.0]
+    w_accel: [0.01, 10.0]
+    w_steer: [0.01, 10.0]
+    w_steer_rate: [0.01, 10.0]
+  cbf: # 制御バリア関数（CBF）による安全制約
+    enabled: true # CBFによる安全制約を有効にする
+    max_obstacles: 4 # CBFで衝突回避対象とする周辺車両の最大数
+    nearby_vehicle_range: 20.0 # CBF対象を探索する半径[m]
+    gamma: 0.7 # 車間楕円CBFの減衰係数(0<gamma<=1、小さいほど保守的)
+    ellipse: # 周辺車両を守る楕円形の安全領域
+      use_dynamic_length: false # 速度に応じて長軸を動的に計算する
+      fixed_length_margin: 2.5 # 固定長軸マージン[m]（use_dynamic_length=falseの場合）
+      width_margin: 0.6 # 幅方向マージン[m]
+    lane_margin: 0.1 # 車線離脱防止CBFのマージン[m]
+    lane_gamma: 0.5 # 車線離脱防止CBFの減衰係数(0<gamma<=1)
+    lane_slack_penalty: 1000.0 # 車線離脱防止CBFのスラック変数ペナルティ重み
+    # 走行可能範囲は合流車線+本線の範囲からシグモイド関数で本線のみの範囲へ遷移する
+    lane_sigmoid_steepness: 0.3 # シグモイド関数の傾き（大きいほど急峻に遷移）
+    lane_sigmoid_transition_x: 80 # 遷移中心のx座標[m]。nullなら合流車線の終端xを自動使用
 
 sac:
   policy: MlpPolicy

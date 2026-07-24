@@ -1,6 +1,6 @@
 import yaml
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Union, Optional
+from typing import List, Dict, Any, Union, Optional, Tuple
 
 @dataclass(frozen=True)
 class SimulationConfig:
@@ -147,6 +147,59 @@ class SACConfig:
     policy_kwargs: Dict[str, Any] = field(default_factory=dict)
     callback: Dict[str, Any] = field(default_factory=dict)
 
+@dataclass(frozen=True)
+class RLMPCWeights:
+    w_pos: float = 1.0
+    w_yaw: float = 0.0
+    w_vel: float = 1.0
+    w_accel: float = 0.5
+    w_steer: float = 0.5
+    w_steer_rate: float = 0.5
+
+@dataclass(frozen=True)
+class RLMPCWeightLimits:
+    # DRLが学習するMPCコスト重みの範囲 [min, max]
+    w_pos: Tuple[float, float] = (0.1, 50.0)
+    w_yaw: Tuple[float, float] = (0.0, 10.0)
+    w_vel: Tuple[float, float] = (0.1, 50.0)
+    w_accel: Tuple[float, float] = (0.01, 10.0)
+    w_steer: Tuple[float, float] = (0.01, 10.0)
+    w_steer_rate: Tuple[float, float] = (0.01, 10.0)
+
+@dataclass(frozen=True)
+class RLMPCCBFEllipseConfig:
+    use_dynamic_length: bool = False
+    fixed_length_margin: float = 10.0
+    width_margin: float = 1.0
+
+@dataclass(frozen=True)
+class RLMPCCBFConfig:
+    # 制御バリア関数（CBF）による安全制約の設定
+    enabled: bool = True
+    max_obstacles: int = 4  # CBFで衝突回避対象とする周辺車両の最大数
+    nearby_vehicle_range: float = 20.0  # CBF対象を探索する半径[m]
+    gamma: float = 0.7  # 車間楕円CBFの減衰係数 (0 < gamma <= 1)
+    ellipse: RLMPCCBFEllipseConfig = field(default_factory=RLMPCCBFEllipseConfig)
+    lane_margin: float = 0.0  # 車線離脱防止CBFのマージン[m]
+    lane_gamma: float = 0.7  # 車線離脱防止CBFの減衰係数 (0 < gamma <= 1)
+    lane_slack_penalty: float = 1000.0  # 車線離脱防止CBFのスラック変数ペナルティ重み
+    # 車線離脱防止CBFの許容範囲は、合流車線・本線を合わせた範囲からシグモイド関数で
+    # 本線のみの範囲へ滑らかに遷移させる（合流完了後は本線への収束を強制する）
+    lane_sigmoid_steepness: float = 0.3  # シグモイド関数の傾き（大きいほど急峻）
+    lane_sigmoid_transition_x: Optional[float] = None  # 遷移中心のx座標[m]。未指定時は合流車線終端を自動使用
+
+@dataclass(frozen=True)
+class RLMPCConfig:
+    # DRLが意思決定（目標横位置・目標速度・計画時間・MPC重み）を行い、
+    # 5次多項式で軌道を生成、MPCで追従制御するパイプライン用の設定
+    mpc_horizon: int = 10
+    mpc_time_step: float = 0.1
+    planning_time_min: float = 1.0
+    planning_time_max: float = 4.0
+    weights: RLMPCWeights = field(default_factory=RLMPCWeights)
+    weight_limits: RLMPCWeightLimits = field(default_factory=RLMPCWeightLimits)
+    cbf: RLMPCCBFConfig = field(default_factory=RLMPCCBFConfig)
+
 @dataclass
 class MasterConfig:
     simulation: SimulationConfig
@@ -157,6 +210,7 @@ class MasterConfig:
     arrb_model: ARRBModelParams = field(default=None)
     reward: RewardConfig = field(default=None)
     sac: SACConfig = field(default_factory=SACConfig)
+    rlmpc: RLMPCConfig = field(default_factory=RLMPCConfig)
 
     @classmethod
     def from_yaml(cls, file_path: str) -> 'MasterConfig':
@@ -217,6 +271,24 @@ class MasterConfig:
         sac_config = SACConfig(**config_dict.get('sac', {}))
         config_dict['sac'] = sac_config
 
+        rlmpc_dict = dict(config_dict.get('rlmpc', {}))
+        rlmpc_weights = RLMPCWeights(**rlmpc_dict.pop('weights', {}))
+
+        weight_limits_dict = rlmpc_dict.pop('weight_limits', {})
+        rlmpc_weight_limits = RLMPCWeightLimits(**{k: tuple(v) for k, v in weight_limits_dict.items()})
+
+        cbf_dict = dict(rlmpc_dict.pop('cbf', {}))
+        ellipse_dict = cbf_dict.pop('ellipse', {})
+        rlmpc_cbf = RLMPCCBFConfig(ellipse=RLMPCCBFEllipseConfig(**ellipse_dict), **cbf_dict)
+
+        rlmpc_config = RLMPCConfig(
+            weights=rlmpc_weights,
+            weight_limits=rlmpc_weight_limits,
+            cbf=rlmpc_cbf,
+            **rlmpc_dict,
+        )
+        config_dict['rlmpc'] = rlmpc_config
+
         return cls(
             simulation=SimulationConfig(**config_dict['simulation']),
             visualization=VisualizationConfig(**config_dict['visualization']),
@@ -225,5 +297,6 @@ class MasterConfig:
             policies=config_dict['policies'],
             arrb_model=ARRBModelParams(**config_dict['arrb_model']),
             reward=config_dict['reward'],
-            sac=config_dict['sac']
+            sac=config_dict['sac'],
+            rlmpc=config_dict['rlmpc']
         )

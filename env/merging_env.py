@@ -224,32 +224,32 @@ class MergingEnv(gym.Env):
             for vehicle in self.traffic_manager.vehicles:
                 if vehicle.lane_id == self.ego_vehicle.lane_id and vehicle.state[0] < self.ego_vehicle.state[0]:  # 追従車両
                     vehicle_deceleration = -min(vehicle.current_action[0], 0)  # 追従車両の減速量
-                    reward += weight * vehicle_deceleration**2
+                    reward += weight * vehicle_deceleration
 
         # 加速度に対するペナルティ
         if self.config.reward.acceleration_penalty.enabled:
             weight = self.config.reward.acceleration_penalty.weight
             acceleration = self.ego_vehicle.current_action[0] if hasattr(self.ego_vehicle, 'current_action') else 0.0
-            reward += weight * acceleration**2
+            reward += weight * abs(acceleration)
 
         # ジャーク（加速度の変化率）に対するペナルティ
         if self.config.reward.jerk_penalty.enabled:
             weight = self.config.reward.jerk_penalty.weight
             jerk = self.jerk_observer.get_current_jerk(self.ego_vehicle_id)
             if jerk is not None:
-                reward += weight * jerk**2
+                reward += weight * abs(jerk)
 
         # ステアリング角度に対するペナルティ
         if self.config.reward.steering_angle_penalty.enabled:
             weight = self.config.reward.steering_angle_penalty.weight
             steering_angle = self.ego_vehicle.state[4]
-            reward += weight * steering_angle**2
+            reward += weight * abs(steering_angle)
 
         # ステアリング角速度に対するペナルティ
         if self.config.reward.steering_rate_penalty.enabled:
             weight = self.config.reward.steering_rate_penalty.weight
             steering_rate = self.ego_vehicle.current_action[1] if hasattr(self.ego_vehicle, 'current_action') else 0.0
-            reward += weight * steering_rate**2
+            reward += weight * abs(steering_rate)
 
         return reward
 
