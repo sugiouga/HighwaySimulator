@@ -8,6 +8,11 @@ import sys
 import argparse
 import numpy as np
 
+# stable_baselines3のtensorboardロギング経由でtensorflowが読み込まれる際に出る
+# 無害なoneDNN/abslログを抑制する（tensorflow importより前に設定する必要がある）
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "3")
+os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
+
 # ensure project root is on sys.path for imports when executing as script
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT not in sys.path:
@@ -15,6 +20,8 @@ if ROOT not in sys.path:
 
 from stable_baselines3 import SAC
 from stable_baselines3.common.vec_env import DummyVecEnv
+from stable_baselines3.common.monitor import Monitor
+from stable_baselines3.common.callbacks import BaseCallback
 
 from env.merging_env import MergingEnv
 from utils.config_loader import MasterConfig
@@ -24,9 +31,82 @@ def make_env(config_path):
     def _init():
         cfg = MasterConfig.from_yaml(config_path)
         env = MergingEnv(cfg)
+        env = Monitor(env)
         return env
     return _init
 
+class MergingEnvMetricsCallback(BaseCallback):
+    """
+    合流環境（MergingEnv）のカスタム指標（衝突率、成功率、平均速度など）を
+    TensorBoard の `episode_metrics/` カテゴリに記録するコールバック。
+    """
+    def __init__(self, verbose=0):
+        super().__init__(verbose)
+        # エピソードごとの統計を一時保存するバッファ
+        self.episode_successes = []
+        self.episode_collisions = []
+        self.episode_lane_deviations = []
+        self.episode_timeouts = []
+        self.episode_count = 0
+
+    def _on_step(self) -> bool:
+        # DummyVecEnv から info 辞書を取得 (環境が複数ある場合は配列になるため [0] を指定)
+        info = self.locals["infos"][0]
+
+        # エピソードが終了したタイミング（Monitorラッパー経由で 'episode' が入る）
+        if "episode" in info:
+            self.episode_count += 1
+            success = 0
+            collision = 0
+            lane_deviation = 0
+            timeout = 0
+
+            # 環境側（MergingEnv）の step() 内の info に用意されていると仮定する変数
+            if "termination_reason" in info:
+                termination_reason = info["termination_reason"]
+                if termination_reason == "goal_reached":
+                    success = 1
+
+                elif termination_reason == "collision":
+                    collision = 1
+
+                elif termination_reason == "lane_deviation":
+                    lane_deviation = 1
+
+
+            elif "truncation_reason" in info:
+                truncation_reason = info["truncation_reason"]
+                if truncation_reason == "timeout":
+                    timeout = 1
+
+            # エピソード統計をバッファに追加
+            self.episode_successes.append(success)
+            self.episode_collisions.append(collision)
+            self.episode_lane_deviations.append(lane_deviation)
+            self.episode_timeouts.append(timeout)
+
+        # 一定エピソードごとに TensorBoard に平均値を書き出し
+        if self.episode_count % 100 == 0:
+            if len(self.episode_successes) > 0:
+                success_rate = np.mean(self.episode_successes)
+                self.logger.record("episode_metrics/success_rate", success_rate)
+                self.episode_successes.clear()
+            if len(self.episode_collisions) > 0:
+                collision_rate = np.mean(self.episode_collisions)
+                self.logger.record("episode_metrics/collision_rate", collision_rate)
+                self.episode_collisions.clear()
+            if len(self.episode_lane_deviations) > 0:
+                lane_deviation_rate = np.mean(self.episode_lane_deviations)
+                self.logger.record("episode_metrics/lane_deviation_rate", lane_deviation_rate)
+                self.episode_lane_deviations.clear()
+            if len(self.episode_timeouts) > 0:
+                timeout_rate = np.mean(self.episode_timeouts)
+                self.logger.record("episode_metrics/timeout_rate", timeout_rate)
+                self.episode_timeouts.clear()
+
+        self.logger.dump(step=self.num_timesteps)
+
+        return True
 
 def main():
     parser = argparse.ArgumentParser()
@@ -46,6 +126,7 @@ def main():
         tb_log = None
 
     env = DummyVecEnv([make_env(args.config)])
+    metrics_callback = MergingEnvMetricsCallback()
 
     sac_config = MasterConfig.from_yaml(args.config).sac
     sac_kwargs = {
@@ -64,22 +145,9 @@ def main():
     }
 
     model = SAC(sac_config.policy, env, verbose=1, tensorboard_log=tb_log, **sac_kwargs)
-    model.learn(total_timesteps=args.timesteps)
+    model.learn(total_timesteps=args.timesteps, callback=metrics_callback)
     model.save(args.save)
-
-    # simple evaluation rollout
-    vec_env = env
-    obs = vec_env.reset()
-    total_reward = 0.0
-    for _ in range(1000):
-        action, _states = model.predict(obs, deterministic=True)
-        obs, rewards, dones, infos = vec_env.step(action)
-        total_reward += np.asarray(rewards).sum()
-        if dones.any():
-            break
-
-    print(f"Sample rollout reward: {total_reward}")
-
 
 if __name__ == "__main__":
     main()
+

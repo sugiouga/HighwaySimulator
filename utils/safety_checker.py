@@ -17,12 +17,13 @@ class SafetyChecker:
                 distance = float(np.hypot(dx, dy))
                 if distance < (v1.length + v1.width + v2.length + v2.width) / 4:
                     # 円近似で衝突の可能性がある場合は、精密判定を行う
-                    if SafetyChecker._check_precise_collision(v1, v2):
+                    if SafetyChecker.check_precise_collision(v1, v2):
                         vehicles_to_remove.add(v1)
                         vehicles_to_remove.add(v2)
         # return vehicles to remove as list
         return list(vehicles_to_remove)
-    def _check_precise_collision(vehicle1, vehicle2):
+
+    def check_precise_collision(vehicle1, vehicle2):
         """2台の車両が衝突しているかどうかを精密に判定するメソッド"""
         # OBB（Oriented Bounding Box）を使用して、分離軸定理 (Separating Axis Theorem, SAT) に基づいて衝突判定を行う
         # 2つの長方形の各辺に垂直な軸を計算し、その軸に沿って投影したときに重なりがあるかどうかを判定する
