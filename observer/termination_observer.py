@@ -1,5 +1,6 @@
 from .base_observer import BaseObserver
 from utils.safety_checker import SafetyChecker
+import numpy as np
 
 class TerminationObserver(BaseObserver):
     """シミュレーションの終了条件を評価するオブザーバー"""
@@ -11,24 +12,29 @@ class TerminationObserver(BaseObserver):
 
         ego_vehicle = next((v for v in vehicles if v.is_ego), None)
         if ego_vehicle is not None:
-            # collision: check precise collision between ego and any other vehicle
+            corners = ego_vehicle.get_corners()
+            # 衝突判定
             for v in vehicles:
                 if v is ego_vehicle:
                     continue
                 try:
-                    if SafetyChecker._check_precise_collision(ego_vehicle, v):
-                        self.info = {"termination_reason": "collision"}
-                        return
+                    dx = float(np.nan_to_num(ego_vehicle.x - v.x, nan=0.0, posinf=0.0, neginf=0.0))
+                    dy = float(np.nan_to_num(ego_vehicle.y - v.y, nan=0.0, posinf=0.0, neginf=0.0))
+                    distance = float(np.hypot(dx, dy))
+                    if distance < (ego_vehicle.length + ego_vehicle.width + v.length + v.width) / 4:
+                        if SafetyChecker.check_precise_collision(ego_vehicle, v):
+                            self.info = {"termination_reason": "collision"}
+                            return
                 except Exception:
                     # fallback: ignore errors in collision check
                     continue
 
-            # lane deviation: ego not within its assigned lane bounds
+            # 車線逸脱判定
             try:
-                lane = road_network.get_lane(ego_vehicle.lane_id)
-                if lane is None or not lane.is_within_bounds(ego_vehicle.x, ego_vehicle.y):
-                    self.info = {"termination_reason": "lane_deviation"}
-                    return
+                for corner in corners:
+                    if not road_network.is_within_bounds(corner[0], corner[1]):
+                        self.info = {"termination_reason": "lane_deviation"}
+                        return
             except Exception:
                 pass
 

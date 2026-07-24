@@ -18,6 +18,7 @@ class VisualizationConfig:
     caption: str
     ppm: float
     origin_x: float
+    frame_rate: int  # フレームレートを追加
 
 @dataclass(frozen=True)
 class RoadNetworkConfig:
@@ -123,11 +124,15 @@ class RewardConfig:
     y_position_reward: RewardParams
     target_velocity_reward: RewardParams
     following_vehicle_deceleration_penalty: RewardParams
+    acceleration_penalty: RewardParams
     jerk_penalty: RewardParams
+    steering_angle_penalty: RewardParams
+    steering_rate_penalty: RewardParams
 
 @dataclass(frozen=True)
 class SACConfig:
     policy: str = "MlpPolicy"
+    total_timesteps: int = 200000
     learning_rate: float = 3e-4
     buffer_size: int = 100000
     learning_starts: int = 1000
@@ -140,6 +145,7 @@ class SACConfig:
     target_update_interval: int = 1
     device: str = "auto"
     policy_kwargs: Dict[str, Any] = field(default_factory=dict)
+    callback: Dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class MasterConfig:
@@ -201,7 +207,10 @@ class MasterConfig:
             y_position_reward=RewardParams(**config_dict['reward']['y_position_reward']),
             target_velocity_reward=RewardParams(**config_dict['reward']['target_velocity_reward']),
             following_vehicle_deceleration_penalty=RewardParams(**config_dict['reward']['following_vehicle_deceleration_penalty']),
-            jerk_penalty=RewardParams(**config_dict['reward']['jerk_penalty'])
+            acceleration_penalty=RewardParams(**config_dict['reward']['acceleration_penalty']),
+            jerk_penalty=RewardParams(**config_dict['reward']['jerk_penalty']),
+            steering_angle_penalty=RewardParams(**config_dict['reward']['steering_angle_penalty']),
+            steering_rate_penalty=RewardParams(**config_dict['reward']['steering_rate_penalty'])
         )
         config_dict['reward'] = reward_config
 

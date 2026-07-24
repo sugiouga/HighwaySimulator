@@ -1,14 +1,15 @@
 ﻿simulation:
   time_step: 0.1 # シミュレーションの時間ステップ[s]
-  warmup_time: 5.0 # ウォームアップ時間[s]
+  warmup_time: 10.0 # ウォームアップ時間[s]
   total_time: 30.0 # シミュレーションの総時間[s]
-  goal_x: 115.0 # 目標位置のx座標[m]
+  goal_x: 120.0 # 目標位置のx座標[m]
 
 visualization:
   enable: true # 可視化の有効化
   screen_width: 1200 # 画面の幅[px]
   screen_height: 300 # 画面の高さ[px]
   screen_color: "paleturquoise" # 画面の背景色
+  frame_rate: 60 # フレームレート[FPS]
   caption: "Highway Simulator" # ウィンドウのタイトル
   ppm: 10 # ピクセルあたりのメートル数
   origin_x: 0.0 # 描画開始位置(ピクセル)
@@ -57,7 +58,7 @@ policies:
       min_spacing: 2.0  # 最小車間距離 [m]
       comfortable_deceleration: 2.0  # 快適な減速度 [m/s^2]
     sensor_range: [
-      40.0,  # 前方向の長さ [m]
+      100.0,  # 前方向の長さ [m]
       1.6   # 横方向の幅 [m]
     ]
     color: "blue" # 車両の色
@@ -99,29 +100,30 @@ road_network:
     waypoints: [[0, 0], [100, 0]]
     adj_right: "merge_1"
   - lane_id: "main_1_3"
-    waypoints: [[100, 0], [120, 0]]
+    waypoints: [[100, 0], [125, 0]]
   - lane_id: "merge_1"
-    waypoints: [[-20, -3.5], [100, -3.5]]
+    waypoints: [[0, -3.5], [100, -3.5]]
     adj_left: "main_1_2"
   spawn_points:
   - id: "spawn_1"
     lane_id: "main_1_1"
-    arrive_rate: 0.3 # 到着率[車両/s]
-    s_start: -20.0 # スポーン開始位置[m]
+    arrive_rate: 0.5 # 到着率[車両/s]
+    s_start: 0.0 # スポーン開始位置[m]
     d_start: 0.0 # スポーン開始横位置[m]
-    velocity_range: [6.0, 8.0]
+    min_spawn_gap: 30.0 # スポーン時に前方車両との間に必要な最小車間距離[m]
+    velocity_range: [10.0, 20.0]
     policies_distribution:
       IDM_Aggressive: 0.0
       IDM_Conservative: 0.0
       IDM_Normal: 1.0
   init_vehicles:
-  - id: "main_1_1_lead"
-    lane_id: "main_1_1"
-    s: 110.0
-    d: 0.0
-    velocity: 10.0
-    policy_id: "IDM_Normal"
-
+  - vehicle_id: "ego_vehicle"
+    lane_id: "merge_1"
+    s : 0.0
+    d : 0.0
+    velocity: 6.0
+    policy_id: "DRL_Agent"
+    is_ego: true
 
 arrb_model:
   delta: 0.666  # 燃料消費モデルのデルタ項
@@ -132,7 +134,7 @@ arrb_model:
   d_3: 0.000672  # 燃料消費モデルのd_3項
 
 reward:
-  global_reward_scale: 1.0 # グローバル報酬のスケール
+  global_reward_scale: 0.05 # グローバル報酬のスケール
 
   success_reward: 1.0 # 合流成功の報酬
   collision_penalty: -1.0 # 衝突ペナルティ
@@ -141,30 +143,49 @@ reward:
 
   y_position_reward:
     enabled: true # y位置に基づく報酬の有効化
-    weight: 0.025 # y位置に基づく報酬の重み
+    weight: 0.1 # y位置に基づく報酬の重み
     std: {}
     target: 0 # 目標y位置[m]
 
   target_velocity_reward:
     enabled: true # 目標速度に基づく報酬の有効化
-    weight: 0.15 # 目標速度に基づく報酬の重み
-    std: 2.0 # 目標速度に基づく報酬の標準偏差
-    target: 15.0 # 目標速度[m/s]
+    weight: 0.80 # 目標速度に基づく報酬の重み
+    std: 1.0 # 目標速度に基づく報酬の標準偏差
+    target: 7.0 # 目標速度[m/s]
 
   following_vehicle_deceleration_penalty:
     enabled: true # 前方車両の減速ペナルティの有効化
-    weight: 0.01 # 前方車両の減速ペナルティの重み
+    weight: 0.5 # 前方車両の減速ペナルティの重み
+    std: {}
+    target: {}
+
+  acceleration_penalty:
+    enabled: true # 加速度ペナルティの有効化
+    weight: 0.005 # 加速度ペナルティの重み
     std: {}
     target: {}
 
   jerk_penalty:
     enabled: true # ジャークペナルティの有効化
-    weight: 0.0025 # ジャークペナルティの重み
+    weight: 0.005 # ジャークペナルティの重み
+    std: {}
+    target: {}
+
+  steering_angle_penalty:
+    enabled: true # ステアリング角度ペナルティの有効化
+    weight: 0.25 # ステアリング角度ペナルティの重み
+    std: {}
+    target: {}
+
+  steering_rate_penalty:
+    enabled: true # ステアリングレートペナルティの有効化
+    weight: 0.05 # ステアリングレートペナルティの重み
     std: {}
     target: {}
 
 sac:
   policy: MlpPolicy
+  total_timesteps: 5000
   learning_rate: 0.0003
   buffer_size: 100000
   learning_starts: 1000
@@ -175,6 +196,6 @@ sac:
   gradient_steps: 1
   ent_coef: auto
   target_update_interval: 1
-  device: auto
+  device: cuda
   policy_kwargs:
     net_arch: [256, 256]

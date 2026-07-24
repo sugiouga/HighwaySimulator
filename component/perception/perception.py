@@ -83,8 +83,8 @@ class Perception:
 
     def calculate_relative_velocity(self, ego: 'BaseVehicle', vehicle: 'BaseVehicle') -> List[float]:
         """自車と他車の相対速度を計算するメソッド"""
-        rel_vx = float(np.nan_to_num(vehicle.vx - ego.vx, nan=0.0, posinf=0.0, neginf=0.0))
-        rel_vy = float(np.nan_to_num(vehicle.vy - ego.vy, nan=0.0, posinf=0.0, neginf=0.0))
+        rel_vx = float(np.nan_to_num(vehicle.velocity * np.cos(vehicle.yaw) - ego.velocity * np.cos(ego.yaw), nan=0.0, posinf=0.0, neginf=0.0))
+        rel_vy = float(np.nan_to_num(vehicle.velocity * np.sin(vehicle.yaw) - ego.velocity * np.sin(ego.yaw), nan=0.0, posinf=0.0, neginf=0.0))
         return [rel_vx, rel_vy]
 
     def is_within_sensor_range(self, relative_position: List[float]) -> bool:

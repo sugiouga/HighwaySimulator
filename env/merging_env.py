@@ -26,15 +26,6 @@ class MergingEnv(gym.Env):
             dtype=np.float32,
         )
 
-        self.ego_vehicle_id = "ego_vehicle"
-        self.road_network = RoadNetwork(config)
-        self.safety_checker = SafetyChecker()
-        self.visualizer = Visualizer(config) if config.visualization.enable else None
-        self.metrics_observer = MetricsObserver(config)
-        self.termination_observer = TerminationObserver(config)
-        self.truncation_observer = TruncationObserver(config)
-        self.jerk_observer = JerkObserver(config)
-
         # 観測正規化のための範囲を初期化
         all_waypoints = [wp for lane in self.config.road_network.lanes for wp in lane["waypoints"]]
         xs = [wp[0] for wp in all_waypoints]
@@ -67,34 +58,39 @@ class MergingEnv(gym.Env):
             except Exception:
                 pass
 
-        self.road_network.reset()
+        self.safety_checker = SafetyChecker()
+        self.road_network = RoadNetwork(self.config)
         self.traffic_manager = TrafficManager(self.road_network, self.config, dt=self.config.simulation.time_step)
+        self.metrics_observer = MetricsObserver(self.config)
+        self.termination_observer = TerminationObserver(self.config)
+        self.truncation_observer = TruncationObserver(self.config)
+        self.jerk_observer = JerkObserver(self.config)
+
+        if self.config.visualization.enable:
+            self.visualizer = Visualizer(self.config)
+            self.traffic_manager.add_observer(self.visualizer)
+        self.traffic_manager.add_observer(self.metrics_observer)
+        self.traffic_manager.add_observer(self.termination_observer)
+        self.traffic_manager.add_observer(self.truncation_observer)
+        self.traffic_manager.add_observer(self.jerk_observer)
+
+        self.road_network.reset()
 
         # ウォームアップステップを実行して、初期状態を安定させる
         warmup_steps = int(self.config.simulation.warmup_time / self.config.simulation.time_step)
         for _ in range(warmup_steps):
             self.traffic_manager.step()
 
-        # ego車両の初期化
-        lane_id = "merge_1"
-        lane = self.road_network.get_lane(lane_id)
-        x, y = lane.get_cartesian(5.0, 0.0)
-        self.ego_vehicle = self.traffic_manager.vehicle_manager.factory.create_vehicle(
-            vehicle_id=self.ego_vehicle_id,
-            lane_id=lane_id,
-            init_state=[x, y, 0.0, 6.0, 0.0],
-            policy_id="DRL_Agent",
-            is_ego=True
-        )
-        self.traffic_manager.add_vehicle(self.ego_vehicle)
+        # 初期車両をスポーンする
+        self.traffic_manager.spawn_init_vehicles()
 
-        # add observers only if present
-        if self.visualizer is not None:
-            self.traffic_manager.add_observer(self.visualizer)
-        self.traffic_manager.add_observer(self.metrics_observer)
-        self.traffic_manager.add_observer(self.termination_observer)
-        self.traffic_manager.add_observer(self.truncation_observer)
-        self.traffic_manager.add_observer(self.jerk_observer)
+        # Ego車両を特定
+        self.ego_vehicle_id = None
+        for vehicle in self.traffic_manager.vehicles:
+            if vehicle.is_ego:
+                self.ego_vehicle_id = vehicle.vehicle_id
+                self.ego_vehicle = vehicle
+                break
 
         observation = self._get_observation()
         info = {}
@@ -230,12 +226,30 @@ class MergingEnv(gym.Env):
                     vehicle_deceleration = -min(vehicle.current_action[0], 0)  # 追従車両の減速量
                     reward += weight * vehicle_deceleration**2
 
+        # 加速度に対するペナルティ
+        if self.config.reward.acceleration_penalty.enabled:
+            weight = self.config.reward.acceleration_penalty.weight
+            acceleration = self.ego_vehicle.current_action[0] if hasattr(self.ego_vehicle, 'current_action') else 0.0
+            reward += weight * acceleration**2
+
         # ジャーク（加速度の変化率）に対するペナルティ
         if self.config.reward.jerk_penalty.enabled:
             weight = self.config.reward.jerk_penalty.weight
             jerk = self.jerk_observer.get_current_jerk(self.ego_vehicle_id)
             if jerk is not None:
                 reward += weight * jerk**2
+
+        # ステアリング角度に対するペナルティ
+        if self.config.reward.steering_angle_penalty.enabled:
+            weight = self.config.reward.steering_angle_penalty.weight
+            steering_angle = self.ego_vehicle.state[4]
+            reward += weight * steering_angle**2
+
+        # ステアリング角速度に対するペナルティ
+        if self.config.reward.steering_rate_penalty.enabled:
+            weight = self.config.reward.steering_rate_penalty.weight
+            steering_rate = self.ego_vehicle.current_action[1] if hasattr(self.ego_vehicle, 'current_action') else 0.0
+            reward += weight * steering_rate**2
 
         return reward
 
@@ -263,10 +277,5 @@ class MergingEnv(gym.Env):
         trunc_info = self.truncation_observer.get_info()
         if trunc_info:
             info.update(trunc_info)
-
-        # metrics
-        metrics = self.metrics_observer.get_current_metrics(self.ego_vehicle_id)
-        if metrics:
-            info.setdefault('metrics', metrics)
 
         return info

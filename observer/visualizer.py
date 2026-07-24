@@ -11,6 +11,7 @@ class Visualizer(BaseObserver):
         self.screen_height = self.visualization_config.screen_height
         self.screen_color = self.visualization_config.screen_color
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
+        self.frame_rate = self.visualization_config.frame_rate
 
         # 描画パラメータの設定
         pygame.display.set_caption(self.visualization_config.caption)
@@ -50,7 +51,7 @@ class Visualizer(BaseObserver):
         self.screen.blit(time_text, (10, 10))
 
         pygame.display.flip()
-        self.clock.tick(30)  # フレームレートを30FPSに設定
+        self.clock.tick(self.frame_rate)  # フレームレートを30FPSに設定
 
     def _compute_road_pixel_waypoints(self, road_network):
         """道路のピクセル座標を計算して保存するメソッド
@@ -127,3 +128,29 @@ class Visualizer(BaseObserver):
 
         # 車両の輪郭を黒色で描画
         pygame.draw.polygon(self.screen, (0, 0, 0), pixel_corners, 2)
+
+        # 車両の頭上に速度を表示
+        self._draw_vehicle_speed(vehicle)
+
+    def _draw_vehicle_speed(self, vehicle):
+        """車両の頭上に速度を白い吹き出しで表示するメソッド
+        Args
+        - vehicle: 描画する車両オブジェクト
+        """
+        center_pixel_x = self.origin_x + vehicle.x * self.ppm
+        center_pixel_y = self.screen_height // 2 - vehicle.y * self.ppm
+        top_pixel_y = center_pixel_y - (vehicle.width / 2) * self.ppm - 4
+
+        speed_text = self.font.render(f"{vehicle.velocity:.1f} m/s", True, (0, 0, 0))
+        text_rect = speed_text.get_rect(midbottom=(center_pixel_x, top_pixel_y))
+
+        # 吹き出し（白背景）を描画
+        bubble_rect = text_rect.inflate(12, 6)
+        bubble_surface = pygame.Surface(bubble_rect.size, pygame.SRCALPHA)
+        bubble_local_rect = bubble_surface.get_rect()
+        pygame.draw.rect(bubble_surface, (255, 255, 255, 230), bubble_local_rect, border_radius=6)
+        pygame.draw.rect(bubble_surface, (0, 0, 0, 180), bubble_local_rect, width=1, border_radius=6)
+        self.screen.blit(bubble_surface, bubble_rect)
+
+        # 吹き出しの上に速度テキストを描画
+        self.screen.blit(speed_text, text_rect)

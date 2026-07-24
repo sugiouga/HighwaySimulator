@@ -81,12 +81,12 @@ class TestTrafficFlow(unittest.TestCase):
         if self.config.visualization.enable:
             visualizer = Visualizer(self.config)
             self.traffic_manager.add_observer(visualizer)
-            
+
             # 全シミュレーション時間を実行して可視化がエラーなく実行されるか確認
             total_time = self.config.simulation.total_time
             while self.traffic_manager.current_time < total_time:
                 self.traffic_manager.step()
-            
+
             # シミュレーションが完了したことを確認
             self.assertAlmostEqual(
                 self.traffic_manager.current_time,

@@ -15,15 +15,20 @@ class TrafficManager:
 
         self.road_network.reset()
         self.vehicle_manager = VehicleManager(self.config)
-        # 初期車両が設定されている場合はスポーンする
-        if config.road_network.init_vehicles is not None and len(config.road_network.init_vehicles) > 0:
-            self.vehicle_manager.spawn_init_vehicles(self)
 
         for vehicle in self.vehicles:
             self._register_perception(vehicle)
 
+    def spawn_init_vehicles(self):
+        """初期車両をスポーンするメソッド"""
+        self.vehicle_manager.spawn_init_vehicles(self)
+
     def add_vehicle(self, vehicle):
-        self.vehicles.append(vehicle)
+        # is_egoがTrueの車両は先頭に追加して、常にvehicles[0]がエゴ車両になるようにする
+        if vehicle.is_ego:
+            self.vehicles.insert(0, vehicle)
+        else:
+            self.vehicles.append(vehicle)
         self._register_perception(vehicle)
 
     def _register_perception(self, vehicle):
@@ -35,12 +40,6 @@ class TrafficManager:
 
     def step(self):
         """シミュレーションの1ステップを進めるメソッド"""
-
-        # 車両のスポーンと削除を管理する
-        self.vehicle_manager.update(self)
-
-        for vehicle in self.vehicles:
-            self._register_perception(vehicle)
 
         # 1. 認識層
         # 各車両の周囲の車両を観測する
@@ -62,6 +61,9 @@ class TrafficManager:
         self._step_count += 1
         self.current_time = self._step_count * self.dt  # 誤差なし
         self._notify_observers()
+
+        # 車両のスポーンと削除を管理する
+        self.vehicle_manager.update(self)
 
     def _notify_observers(self):
         """観察者にシミュレーションの状態を通知するメソッド"""

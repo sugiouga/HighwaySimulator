@@ -28,10 +28,11 @@ class VehicleManager:
             d = vehicle_config.get('d') if isinstance(vehicle_config, dict) else getattr(vehicle_config, 'd')
             velocity = vehicle_config.get('velocity') if isinstance(vehicle_config, dict) else getattr(vehicle_config, 'velocity')
             policy_id = vehicle_config.get('policy_id') if isinstance(vehicle_config, dict) else getattr(vehicle_config, 'policy_id')
+            is_ego = vehicle_config.get('is_ego', False) if isinstance(vehicle_config, dict) else getattr(vehicle_config, 'is_ego', False)
 
             lane = traffic_manager.road_network.get_lane(lane_id)
             x, y = lane.get_cartesian(s, d)
-            vehicle = self.factory.create_vehicle(vehicle_id=vehicle_config.get('id', f"init_{len(traffic_manager.vehicles) + 1}"), lane_id=lane_id, init_state=[x, y, 0.0, velocity, 0.0], policy_id=policy_id, is_ego=False)
+            vehicle = self.factory.create_vehicle(vehicle_id=vehicle_config.get('id', f"init_{len(traffic_manager.vehicles) + 1}"), lane_id=lane_id, init_state=[x, y, 0.0, velocity, 0.0], policy_id=policy_id, is_ego=is_ego)
             traffic_manager.add_vehicle(vehicle)
 
     def _handle_spawning(self, traffic_manager, dt):
@@ -45,16 +46,34 @@ class VehicleManager:
                 d_start = spawn_point.get('d_start') if isinstance(spawn_point, dict) else getattr(spawn_point, 'd_start')
                 velocity_range = spawn_point.get('velocity_range') if isinstance(spawn_point, dict) else getattr(spawn_point, 'velocity_range')
                 policies_distribution = spawn_point.get('policies_distribution') if isinstance(spawn_point, dict) else getattr(spawn_point, 'policies_distribution')
+                min_spawn_gap = spawn_point.get('min_spawn_gap') if isinstance(spawn_point, dict) else getattr(spawn_point, 'min_spawn_gap', None)
+                if min_spawn_gap is None:
+                    min_spawn_gap = 2.0 * self.config.vehicle.length
 
                 lane = traffic_manager.road_network.get_lane(lane_id)
                 s = np.random.uniform(s_start, s_start + 10.0) # スポーン位置の範囲を広げる
                 d = d_start
+
+                # 前方に他車がいる場合はスポーンを見送る
+                if self._is_vehicle_ahead(traffic_manager, lane, lane_id, s, min_spawn_gap):
+                    continue
+
                 velocity = np.random.uniform(*velocity_range)
                 policy_type = np.random.choice(list(policies_distribution.keys()), p=list(policies_distribution.values()))
                 # s, d座標からx, y座標に変換
                 x, y = lane.get_cartesian(s, d)
                 vehicle = self.factory.create_vehicle(vehicle_id=f"{len(traffic_manager.vehicles) + 1}_{policy_type}", lane_id=lane_id, init_state=[x, y, 0.0, velocity, 0.0], policy_id=policy_type, is_ego=False)
                 traffic_manager.add_vehicle(vehicle)
+
+    def _is_vehicle_ahead(self, traffic_manager, lane, lane_id, s, min_gap):
+        """指定した車線・s位置から前方min_gap[m]以内に他車が存在するかを判定するメソッド"""
+        for vehicle in traffic_manager.vehicles:
+            if vehicle.lane_id != lane_id:
+                continue
+            vehicle_s, _ = lane.get_frenet(vehicle.x, vehicle.y)
+            if 0 <= vehicle_s - s < min_gap:
+                return True
+        return False
 
     def _remove_out_of_bounds_vehicles(self, traffic_manager):
         """車線外にいる車両を削除するメソッド"""
